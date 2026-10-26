@@ -1,44 +1,54 @@
 // client/src/pages/Dashboard.jsx
-// Dashboard for viewing, creating, updating, and deleting items scoped to the user
+// Dashboard for tracking habits, viewing streaks, weekly view, and toggling completions
 
 import { useState, useEffect } from 'react';
 import API from '../api/axios';
+import {
+  formatDateKey,
+  isCompletedOnDate,
+  isCompletedToday,
+  getLast7Days,
+  calculateStreak,
+} from '../utils/habitUtils';
 
 const Dashboard = () => {
-  const [items, setItems] = useState([]);
+  const [habits, setHabits] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // State for creating a new item
-  const [newItem, setNewItem] = useState({
-    title: '',
-    description: '',
-    status: 'pending',
+  // State for creating a new habit
+  const [newHabit, setNewHabit] = useState({
+    name: '',
+    frequency: 'daily',
   });
   const [createLoading, setCreateLoading] = useState(false);
 
-  // State for tracking which item is currently being edited
+  // State for tracking which habit is currently being edited
   const [editingId, setEditingId] = useState(null);
   const [editFormData, setEditFormData] = useState({
-    title: '',
-    description: '',
-    status: 'pending',
+    name: '',
+    frequency: 'daily',
   });
 
-  // Fetch all items belonging to the authenticated user on mount
+  const [actionLoadingId, setActionLoadingId] = useState(null);
+
+  // 7-day window for the weekly view
+  const weekDays = getLast7Days();
+
+  // Fetch all habits belonging to the authenticated user on mount
   useEffect(() => {
     let ignore = false;
 
-    API.get('/items')
+    API.get('/habits')
       .then((res) => {
         if (!ignore) {
-          setItems(res.data);
+          setHabits(res.data);
           setError('');
         }
       })
       .catch((err) => {
         if (!ignore) {
-          setError(err.response?.data?.message || 'Failed to load items.');
+          setError(err.response?.data?.message || 'Failed to load habits.');
         }
       })
       .finally(() => {
@@ -52,182 +62,212 @@ const Dashboard = () => {
     };
   }, []);
 
-  // Handle new item form input changes
+  // Handle new habit form inputs
   const handleNewChange = (e) => {
-    setNewItem((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    setNewHabit((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  // Submit new item
+  // Submit new habit
   const handleCreateSubmit = async (e) => {
     e.preventDefault();
-    if (!newItem.title.trim()) return;
+    if (!newHabit.name.trim()) return;
 
     setCreateLoading(true);
     try {
-      const res = await API.post('/items', newItem);
-      setItems((prev) => [res.data, ...prev]);
-      setNewItem({ title: '', description: '', status: 'pending' });
+      const res = await API.post('/habits', newHabit);
+      setHabits((prev) => [res.data, ...prev]);
+      setNewHabit({ name: '', frequency: 'daily' });
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to create item.');
+      alert(err.response?.data?.message || 'Failed to create habit.');
     } finally {
       setCreateLoading(false);
     }
   };
 
-  // Enable edit mode for a specific card
-  const startEdit = (item) => {
-    setEditingId(item._id);
+  // Toggle habit completion for a specific date (defaults to today)
+  const handleToggleDate = async (habitId, targetDateKey = null) => {
+    const dateToToggle = targetDateKey || formatDateKey(new Date());
+    setActionLoadingId(habitId);
+
+    try {
+      const res = await API.post(`/habits/${habitId}/toggle`, { date: dateToToggle });
+      setHabits((prev) =>
+        prev.map((habit) => (habit._id === habitId ? res.data : habit))
+      );
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to update habit completion.');
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  // Enable edit mode
+  const startEdit = (habit) => {
+    setEditingId(habit._id);
     setEditFormData({
-      title: item.title,
-      description: item.description || '',
-      status: item.status || 'pending',
+      name: habit.name,
+      frequency: habit.frequency || 'daily',
     });
   };
 
   // Cancel edit mode
   const cancelEdit = () => {
     setEditingId(null);
-    setEditFormData({ title: '', description: '', status: 'pending' });
+    setEditFormData({ name: '', frequency: 'daily' });
   };
 
-  // Save updated item
+  // Save updated habit
   const handleUpdateSubmit = async (id) => {
-    if (!editFormData.title.trim()) return;
+    if (!editFormData.name.trim()) return;
 
     try {
-      const res = await API.put(`/items/${id}`, editFormData);
-      setItems((prev) =>
-        prev.map((item) => (item._id === id ? res.data : item))
+      const res = await API.put(`/habits/${id}`, editFormData);
+      setHabits((prev) =>
+        prev.map((habit) => (habit._id === id ? res.data : habit))
       );
       setEditingId(null);
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to update item.');
+      alert(err.response?.data?.message || 'Failed to update habit.');
     }
   };
 
-  // Delete an item
+  // Delete a habit
   const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this item?')) return;
+    if (!window.confirm('Are you sure you want to delete this habit?')) return;
 
     try {
-      await API.delete(`/items/${id}`);
-      setItems((prev) => prev.filter((item) => item._id !== id));
+      await API.delete(`/habits/${id}`);
+      setHabits((prev) => prev.filter((habit) => habit._id !== id));
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to delete item.');
+      alert(err.response?.data?.message || 'Failed to delete habit.');
     }
   };
+
+  // Derived stats
+  const totalHabits = habits.length;
+  const completedTodayCount = habits.filter((h) =>
+    isCompletedToday(h.completedDates)
+  ).length;
 
   return (
     <div className="dashboard-container">
-      {/* Top Creation Card */}
+      {/* Overview Statistics Banner */}
+      <section className="stats-banner">
+        <div className="stat-card">
+          <span className="stat-label">Total Habits</span>
+          <span className="stat-value">{totalHabits}</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-label">Done Today</span>
+          <span className="stat-value">
+            {completedTodayCount} / {totalHabits}
+          </span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-label">Today's Progress</span>
+          <span className="stat-value">
+            {totalHabits > 0 ? Math.round((completedTodayCount / totalHabits) * 100) : 0}%
+          </span>
+        </div>
+      </section>
+
+      {/* Add New Habit Section */}
       <section className="create-section">
-        <h2>Add New Item</h2>
+        <h2>Add New Habit</h2>
         <form onSubmit={handleCreateSubmit} className="create-form">
           <div className="form-row">
             <input
               type="text"
-              name="title"
-              value={newItem.title}
+              name="name"
+              value={newHabit.name}
               onChange={handleNewChange}
-              placeholder="Item title *"
+              placeholder="Habit name (e.g. Drink 2L water, Morning Run) *"
               required
               className="input-title"
             />
             <select
-              name="status"
-              value={newItem.status}
+              name="frequency"
+              value={newHabit.frequency}
               onChange={handleNewChange}
               className="select-status"
             >
-              <option value="pending">Pending</option>
-              <option value="in-progress">In Progress</option>
-              <option value="done">Done</option>
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
             </select>
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={createLoading}
+            >
+              {createLoading ? 'Adding...' : 'Add Habit'}
+            </button>
           </div>
-          <textarea
-            name="description"
-            value={newItem.description}
-            onChange={handleNewChange}
-            placeholder="Item description (optional)"
-            rows="2"
-            className="input-desc"
-          ></textarea>
-          <button
-            type="submit"
-            className="btn btn-primary"
-            disabled={createLoading}
-          >
-            {createLoading ? 'Adding...' : 'Add Item'}
-          </button>
         </form>
       </section>
 
-      {/* Items Section */}
-      <section className="items-section">
-        <div className="items-header">
-          <h2>Your Items</h2>
-          <span className="items-count">({items.length})</span>
+      {/* Habits List Section */}
+      <section className="habits-section">
+        <div className="habits-header">
+          <h2>My Habits</h2>
+          <span className="habits-count">({habits.length})</span>
         </div>
 
         {error && <div className="alert alert-error">{error}</div>}
 
         {loading ? (
-          <div className="loading-state">Loading items...</div>
-        ) : items.length === 0 ? (
+          <div className="loading-state">Loading your habits...</div>
+        ) : habits.length === 0 ? (
           <div className="empty-state">
-            <p>No items yet. Create your first item above!</p>
+            <p>No habits tracked yet. Create your first habit above to begin building consistency!</p>
           </div>
         ) : (
           <div className="card-grid">
-            {items.map((item) => {
-              const isEditing = editingId === item._id;
+            {habits.map((habit) => {
+              const isEditing = editingId === habit._id;
+              const streak = calculateStreak(habit);
+              const doneToday = isCompletedToday(habit.completedDates);
+              const isBusy = actionLoadingId === habit._id;
 
               return (
-                <div key={item._id} className="item-card">
+                <div key={habit._id} className="habit-card">
                   {isEditing ? (
                     // Card in Edit Mode
                     <div className="card-edit-mode">
-                      <input
-                        type="text"
-                        value={editFormData.title}
-                        onChange={(e) =>
-                          setEditFormData((prev) => ({
-                            ...prev,
-                            title: e.target.value,
-                          }))
-                        }
-                        className="edit-input"
-                        placeholder="Title"
-                      />
-                      <textarea
-                        value={editFormData.description}
-                        onChange={(e) =>
-                          setEditFormData((prev) => ({
-                            ...prev,
-                            description: e.target.value,
-                          }))
-                        }
-                        className="edit-textarea"
-                        rows="3"
-                        placeholder="Description"
-                      />
-                      <select
-                        value={editFormData.status}
-                        onChange={(e) =>
-                          setEditFormData((prev) => ({
-                            ...prev,
-                            status: e.target.value,
-                          }))
-                        }
-                        className="edit-select"
-                      >
-                        <option value="pending">Pending</option>
-                        <option value="in-progress">In Progress</option>
-                        <option value="done">Done</option>
-                      </select>
+                      <div className="form-group">
+                        <label>Habit Name</label>
+                        <input
+                          type="text"
+                          value={editFormData.name}
+                          onChange={(e) =>
+                            setEditFormData((prev) => ({
+                              ...prev,
+                              name: e.target.value,
+                            }))
+                          }
+                          className="edit-input"
+                          placeholder="Habit Name"
+                          required
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label>Frequency</label>
+                        <select
+                          value={editFormData.frequency}
+                          onChange={(e) =>
+                            setEditFormData((prev) => ({
+                              ...prev,
+                              frequency: e.target.value,
+                            }))
+                          }
+                          className="edit-select"
+                        >
+                          <option value="daily">Daily</option>
+                          <option value="weekly">Weekly</option>
+                        </select>
+                      </div>
                       <div className="card-actions">
                         <button
-                          onClick={() => handleUpdateSubmit(item._id)}
+                          onClick={() => handleUpdateSubmit(habit._id)}
                           className="btn btn-success-sm"
                         >
                           Save
@@ -244,34 +284,93 @@ const Dashboard = () => {
                     // Card in View Mode
                     <>
                       <div className="card-header">
-                        <h3 className="card-title">{item.title}</h3>
-                        <span
-                          className={`status-badge status-${item.status || 'pending'}`}
-                        >
-                          {item.status || 'pending'}
-                        </span>
-                      </div>
-                      <p className="card-description">
-                        {item.description || 'No description provided.'}
-                      </p>
-                      <div className="card-footer">
-                        <span className="card-date">
-                          {new Date(item.createdAt).toLocaleDateString()}
-                        </span>
+                        <div>
+                          <h3 className="card-title">{habit.name}</h3>
+                          <div className="habit-badges">
+                            <span className={`frequency-badge freq-${habit.frequency}`}>
+                              {habit.frequency === 'weekly' ? 'Weekly' : 'Daily'}
+                            </span>
+                            <span className="streak-badge" title="Current streak">
+                              🔥 {streak.label}
+                            </span>
+                          </div>
+                        </div>
                         <div className="card-actions">
                           <button
-                            onClick={() => startEdit(item)}
+                            onClick={() => startEdit(habit)}
                             className="btn btn-secondary-sm"
+                            title="Edit Habit"
                           >
                             Edit
                           </button>
                           <button
-                            onClick={() => handleDelete(item._id)}
+                            onClick={() => handleDelete(habit._id)}
                             className="btn btn-danger-sm"
+                            title="Delete Habit"
                           >
                             Delete
                           </button>
                         </div>
+                      </div>
+
+                      {/* Today's Quick Action Button */}
+                      <div className="today-action-row">
+                        <button
+                          onClick={() => handleToggleDate(habit._id)}
+                          disabled={isBusy}
+                          className={`btn btn-block ${
+                            doneToday ? 'btn-done-today' : 'btn-mark-today'
+                          }`}
+                        >
+                          {doneToday ? '✓ Done for Today' : '+ Mark Done for Today'}
+                        </button>
+                      </div>
+
+                      {/* Weekly View (Last 7 Days) */}
+                      <div className="weekly-view-section">
+                        <div className="weekly-view-title">
+                          <span>Last 7 Days</span>
+                          <span className="weekly-hint">Click a day to toggle</span>
+                        </div>
+                        <div className="weekly-grid">
+                          {weekDays.map((day) => {
+                            const isDone = isCompletedOnDate(
+                              habit.completedDates,
+                              day.date
+                            );
+
+                            return (
+                              <button
+                                key={day.dateKey}
+                                type="button"
+                                className={`week-day-col ${day.isToday ? 'is-today' : ''} ${
+                                  isDone ? 'is-completed' : ''
+                                }`}
+                                onClick={() => handleToggleDate(habit._id, day.dateKey)}
+                                title={`${day.dayName}, ${day.monthName} ${day.dayNumber}: ${
+                                  isDone ? 'Completed' : 'Not completed'
+                                } (click to toggle)`}
+                                disabled={isBusy}
+                              >
+                                <span className="day-name">{day.dayName}</span>
+                                <span className="day-number">{day.dayNumber}</span>
+                                <div className="day-indicator">
+                                  {isDone ? '✓' : day.isToday ? '•' : ''}
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Card Footer */}
+                      <div className="card-footer">
+                        <span className="card-date">
+                          Created {new Date(habit.createdAt).toLocaleDateString()}
+                        </span>
+                        <span className="completions-count">
+                          Total completions: {habit.completedDates?.length || 0}
+                        </span>
                       </div>
                     </>
                   )}
@@ -286,4 +385,3 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
-

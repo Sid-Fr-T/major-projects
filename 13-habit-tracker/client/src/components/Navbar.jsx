@@ -17,7 +17,7 @@ const Navbar = () => {
     <nav className="navbar">
       <div className="nav-container">
         <Link to="/" className="nav-brand">
-          TaskApp
+          Habit Tracker
         </Link>
         <div className="nav-actions">
           {user ? (

@@ -1,6 +1,6 @@
-# React + Vite Frontend
+# Habit Tracker - React + Vite Frontend
 
-A React frontend for the Item Management application built with Vite, React Router v7, and Axios.
+A modern React frontend for the Habit Tracker application built with Vite, React Router v7, and Axios.
 
 ## Features
 
@@ -9,9 +9,9 @@ A React frontend for the Item Management application built with Vite, React Rout
 - **Pages**:
   - `Login`: User authentication with validation and error alerts.
   - `Register`: New user sign-up with password verification and error alerts.
-  - `Dashboard`: Full CRUD interface for items (title, description, status) scoped to the logged-in user.
-- **Navbar**: Displays the logged-in user's name and provides a quick logout button.
-- **Single Stylesheet (`App.css`)**: Responsive layout with modern CSS Grid card design and status badges (`pending`, `in-progress`, `done`).
+  - `Dashboard`: Habit tracker dashboard featuring habit creation, editing, deleting, streak badges, 7-day weekly progress view, and one-click completion toggling for today.
+- **Navbar**: Displays the "Habit Tracker" brand title, user greeting (`Hello, <name>`), and a quick logout button.
+- **Single Stylesheet (`App.css`)**: Responsive layout with modern CSS Grid card design, streak badges (`🔥`), 7-day weekly status indicators (`✓`), and stats banner.
 
 ---
 

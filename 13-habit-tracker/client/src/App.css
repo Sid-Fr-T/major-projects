@@ -1,9 +1,10 @@
 /* client/src/App.css */
-/* Clean, modern single stylesheet for all components and responsive card layout */
+/* Clean, modern stylesheet for Habit Tracker with responsive card layout */
 
 :root {
   --primary: #4f46e5;
   --primary-hover: #4338ca;
+  --primary-light: #eef2ff;
   --bg-main: #f8fafc;
   --bg-card: #ffffff;
   --text-main: #0f172a;
@@ -13,6 +14,12 @@
   --danger-hover: #dc2626;
   --success: #10b981;
   --success-hover: #059669;
+  --success-light: #ecfdf5;
+  --warning-bg: #fffbeb;
+  --warning-text: #b45309;
+  --streak-bg: #fff7ed;
+  --streak-text: #c2410c;
+  --streak-border: #fed7aa;
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   --radius: 8px;
@@ -185,6 +192,7 @@ main {
   font-size: 0.85rem;
   background-color: #fee2e2;
   color: var(--danger);
+  border: 1px solid #fecaca;
 }
 
 .btn-danger-sm:hover {
@@ -301,13 +309,46 @@ select:focus {
   color: #b91c1c;
 }
 
-/* Dashboard */
+/* Dashboard Container */
 .dashboard-container {
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  gap: 28px;
 }
 
+/* Stats Overview Banner */
+.stats-banner {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.stat-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stat-label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+/* Create Section */
 .create-section {
   background-color: var(--bg-card);
   border: 1px solid var(--border-color);
@@ -341,29 +382,25 @@ select:focus {
   min-width: 140px;
 }
 
-.input-desc {
-  resize: vertical;
-}
-
-/* Items Section & Grid */
-.items-section {
+/* Habits Section & Grid */
+.habits-section {
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
-.items-header {
+.habits-header {
   display: flex;
   align-items: baseline;
   gap: 8px;
 }
 
-.items-header h2 {
+.habits-header h2 {
   font-size: 1.35rem;
   font-weight: 600;
 }
 
-.items-count {
+.habits-count {
   color: var(--text-muted);
   font-size: 1rem;
 }
@@ -378,25 +415,27 @@ select:focus {
   border-radius: var(--radius);
 }
 
-/* Responsive Card Grid */
+/* Card Grid */
 .card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 18px;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
 }
 
-.item-card {
+/* Habit Card */
+.habit-card {
   background-color: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius);
-  padding: 18px;
+  padding: 20px;
   box-shadow: var(--shadow-sm);
   display: flex;
   flex-direction: column;
+  gap: 16px;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
-.item-card:hover {
+.habit-card:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
 }
@@ -406,80 +445,206 @@ select:focus {
   justify-content: space-between;
   align-items: flex-start;
   gap: 10px;
-  margin-bottom: 10px;
 }
 
 .card-title {
-  font-size: 1.1rem;
+  font-size: 1.15rem;
   font-weight: 600;
   color: var(--text-main);
   word-break: break-word;
+  margin-bottom: 6px;
 }
 
-.card-description {
-  font-size: 0.9rem;
+.habit-badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.frequency-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+.freq-daily {
+  background-color: #e0e7ff;
+  color: #3730a3;
+}
+
+.freq-weekly {
+  background-color: #ede9fe;
+  color: #5b21b6;
+}
+
+.streak-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background-color: var(--streak-bg);
+  color: var(--streak-text);
+  border: 1px solid var(--streak-border);
+}
+
+.card-actions {
+  display: flex;
+  gap: 6px;
+}
+
+/* Today Action Button */
+.today-action-row {
+  width: 100%;
+}
+
+.btn-mark-today {
+  background-color: var(--primary-light);
+  color: var(--primary);
+  border: 1px solid #c7d2fe;
+  font-weight: 600;
+}
+
+.btn-mark-today:hover:not(:disabled) {
+  background-color: var(--primary);
+  color: #ffffff;
+}
+
+.btn-done-today {
+  background-color: var(--success-light);
+  color: var(--success-hover);
+  border: 1px solid #a7f3d0;
+  font-weight: 600;
+}
+
+.btn-done-today:hover:not(:disabled) {
+  background-color: #fee2e2;
+  color: var(--danger);
+  border-color: #fecaca;
+}
+
+/* Weekly View Section */
+.weekly-view-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background-color: #f8fafc;
+  padding: 12px;
+  border-radius: var(--radius);
+  border: 1px solid #f1f5f9;
+}
+
+.weekly-view-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+  font-weight: 600;
   color: var(--text-muted);
-  flex: 1;
-  margin-bottom: 16px;
-  white-space: pre-wrap;
-  word-break: break-word;
 }
 
+.weekly-hint {
+  font-size: 0.72rem;
+  font-weight: 400;
+  color: #94a3b8;
+}
+
+.weekly-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.week-day-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 2px;
+  border-radius: 6px;
+  background-color: #ffffff;
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+  outline: none;
+}
+
+.week-day-col:hover:not(:disabled) {
+  border-color: var(--primary);
+  background-color: #f1f5f9;
+}
+
+.week-day-col.is-today {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 1px var(--primary);
+}
+
+.week-day-col .day-name {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.week-day-col .day-number {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-main);
+}
+
+.week-day-col .day-indicator {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background-color: #f1f5f9;
+  color: #94a3b8;
+}
+
+.week-day-col.is-completed .day-indicator {
+  background-color: var(--success);
+  color: #ffffff;
+}
+
+.week-day-col.is-completed {
+  background-color: var(--success-light);
+  border-color: #a7f3d0;
+}
+
+.week-day-col.is-today:not(.is-completed) .day-indicator {
+  color: var(--primary);
+  font-size: 1rem;
+}
+
+/* Card Footer */
 .card-footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
   border-top: 1px solid #f1f5f9;
   padding-top: 12px;
-}
-
-.card-date {
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   color: #94a3b8;
-}
-
-.card-actions {
-  display: flex;
-  gap: 8px;
-}
-
-/* Status Badges */
-.status-badge {
-  display: inline-block;
-  padding: 3px 8px;
-  border-radius: 9999px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: capitalize;
-  letter-spacing: 0.3px;
-  white-space: nowrap;
-}
-
-.status-pending {
-  background-color: #fef3c7;
-  color: #b45309;
-}
-
-.status-in-progress {
-  background-color: #e0e7ff;
-  color: #4338ca;
-}
-
-.status-done,
-.status-completed {
-  background-color: #d1fae5;
-  color: #065f46;
 }
 
 /* Card Edit Mode */
 .card-edit-mode {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 
 .edit-input,
-.edit-textarea,
 .edit-select {
   width: 100%;
 }
@@ -499,5 +664,9 @@ select:focus {
   .nav-actions {
     width: 100%;
     justify-content: space-between;
+  }
+
+  .stats-banner {
+    grid-template-columns: 1fr;
   }
 }
