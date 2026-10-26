@@ -1,17 +1,16 @@
-# React + Vite Frontend
+# React + Vite Frontend - Notes App
 
-A React frontend for the Item Management application built with Vite, React Router v7, and Axios.
+A modern, responsive React frontend for the Notes application built with Vite, React Router v7, and Axios.
 
 ## Features
 
-- **AuthContext**: Persists user data and JWT token to `localStorage`, providing `login`, `register`, and `logout` actions.
-- **Protected Routes**: Redirects unauthenticated users to `/login`.
-- **Pages**:
-  - `Login`: User authentication with validation and error alerts.
-  - `Register`: New user sign-up with password verification and error alerts.
-  - `Dashboard`: Full CRUD interface for items (title, description, status) scoped to the logged-in user.
-- **Navbar**: Displays the logged-in user's name and provides a quick logout button.
-- **Single Stylesheet (`App.css`)**: Responsive layout with modern CSS Grid card design and status badges (`pending`, `in-progress`, `done`).
+- **Authentication State**: Managed via `AuthContext` with JWT tokens persisted to `localStorage`. Includes registration, login, and logout.
+- **Protected Routing**: Unauthenticated visitors are automatically redirected to `/login`.
+- **Real-Time Note Search**: Instant search box filtering notes across both `title` and `content`.
+- **Pin Toggle (Pinned First)**: 1-click pin toggle on cards with immediate reordering so pinned notes always appear first.
+- **Note Colors**: Customizable pastel colors with an interactive color swatch selector.
+- **Card Grid Layout**: Responsive CSS Grid card layout with inline editing, deletion confirmation, and formatted timestamps.
+- **Clean Responsive UI**: Single stylesheet (`App.css`) with minimal, clean styling.
 
 ---
 

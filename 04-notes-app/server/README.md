@@ -1,13 +1,16 @@
-# Express & MongoDB Backend
+# Express & MongoDB Backend - Notes API
 
-A clean, modular Express backend with ES modules, Mongoose, JWT authentication, and user-scoped CRUD operations.
+A clean, modular Express backend with ES modules, Mongoose, JWT authentication, and user-scoped Notes CRUD operations.
 
 ## Features
 
 - **ES Modules (`import`/`export`)**: Modern JavaScript syntax.
 - **Authentication**: JWT-based stateless authentication with password hashing via `bcryptjs`.
-- **User Scoping**: Items are tied to the authenticated user; users can only view, update, and delete their own items.
-- **MongoDB & Mongoose**: Schemas with validation, defaults, and timestamps.
+- **User Scoping**: Notes are tied to the authenticated user; users can only view, create, update, and delete their own notes.
+- **MongoDB & Mongoose**: Schemas with validation, defaults, and timestamps (`createdAt`, `updatedAt`).
+- **Notes Management**: Note model with `title`, `content`, `color`, and `pinned`.
+- **Pinned Notes Priority**: Notes query sorted by pinned status (`pinned: -1`), then newest first (`createdAt: -1`).
+- **Search Support**: Backend search support via `?search=` query parameter across title and content.
 - **CORS & Environment Variables**: Configured via `cors` and `dotenv`.
 
 ---
@@ -26,15 +29,15 @@ server/
     │   └── db.js         # MongoDB connection setup
     ├── controllers/
     │   ├── authController.js  # Registration and login logic
-    │   └── itemController.js  # User-scoped Item CRUD logic
+    │   └── noteController.js  # User-scoped Notes CRUD logic
     ├── middleware/
     │   └── auth.js       # JWT verification middleware
     ├── models/
-    │   ├── Item.js       # Generic Item schema & model
+    │   ├── Note.js       # Note schema & model (title, content, color, pinned, user)
     │   └── User.js       # User schema & model
     ├── routes/
     │   ├── authRoutes.js # Routes for /api/auth
-    │   └── itemRoutes.js # Protected routes for /api/items
+    │   └── noteRoutes.js # Protected routes for /api/notes
     └── server.js         # Express app initialization and server entry point
 ```
 
@@ -77,88 +80,43 @@ server/
 | `POST` | `/api/auth/register` | Register a new user | No |
 | `POST` | `/api/auth/login` | Log in and receive JWT | No |
 
-#### Example: Register User (`POST /api/auth/register`)
-Request Body:
-```json
-{
-  "name": "Jane Doe",
-  "email": "jane@example.com",
-  "password": "password123"
-}
-```
-Response (`201 Created`):
-```json
-{
-  "message": "User registered successfully",
-  "token": "eyJhbGciOiJIUzI1NiIsIn...",
-  "user": {
-    "_id": "671df...",
-    "name": "Jane Doe",
-    "email": "jane@example.com",
-    "role": "user",
-    "createdAt": "2026-10-26T12:00:00.000Z"
-  }
-}
-```
-
-#### Example: Login (`POST /api/auth/login`)
-Request Body:
-```json
-{
-  "email": "jane@example.com",
-  "password": "password123"
-}
-```
-Response (`200 OK`):
-```json
-{
-  "message": "Login successful",
-  "token": "eyJhbGciOiJIUzI1NiIsIn...",
-  "user": {
-    "_id": "671df...",
-    "name": "Jane Doe",
-    "email": "jane@example.com",
-    "role": "user",
-    "createdAt": "2026-10-26T12:00:00.000Z"
-  }
-}
-```
-
 ---
 
-### 2. Item Routes (`/api/items`)
-> All item routes require the `Authorization` header: `Bearer <token>`
+### 2. Note Routes (`/api/notes`)
+> All note routes require the `Authorization` header: `Bearer <token>`
 
 | Method | Endpoint | Description | Auth Required |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/api/items` | Get all items for logged-in user | Yes |
-| `POST` | `/api/items` | Create a new item | Yes |
-| `GET` | `/api/items/:id` | Get single item by ID | Yes |
-| `PUT` | `/api/items/:id` | Update item by ID | Yes |
-| `DELETE` | `/api/items/:id` | Delete item by ID | Yes |
+| `GET` | `/api/notes` | Get all notes (pinned first, supports `?search=`) | Yes |
+| `POST` | `/api/notes` | Create a new note | Yes |
+| `GET` | `/api/notes/:id` | Get single note by ID | Yes |
+| `PUT` | `/api/notes/:id` | Update note by ID (title, content, color, pinned) | Yes |
+| `DELETE` | `/api/notes/:id` | Delete note by ID | Yes |
 
-#### Example: Create Item (`POST /api/items`)
+#### Example: Create Note (`POST /api/notes`)
 Headers:
 `Authorization: Bearer <token>`
 
 Request Body:
 ```json
 {
-  "title": "Build portfolio project",
-  "description": "Create full stack MERN app",
-  "status": "pending"
+  "title": "Project Ideas",
+  "content": "Build an offline-first note keeper with React and Express",
+  "color": "#fef9c3",
+  "pinned": true
 }
 ```
+
 Response (`201 Created`):
 ```json
 {
   "_id": "671e0...",
-  "title": "Build portfolio project",
-  "description": "Create full stack MERN app",
-  "status": "pending",
+  "title": "Project Ideas",
+  "content": "Build an offline-first note keeper with React and Express",
+  "color": "#fef9c3",
+  "pinned": true,
   "user": "671df...",
   "createdAt": "2026-10-26T12:05:00.000Z",
   "updatedAt": "2026-10-26T12:05:00.000Z"
 }
 ```
-

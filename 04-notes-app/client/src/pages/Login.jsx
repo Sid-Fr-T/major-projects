@@ -15,6 +15,7 @@ const Login = () => {
 
   // If already logged in, redirect to dashboard
   useEffect(() => {
+    document.title = 'Login - NotesApp';
     if (token) {
       navigate('/');
     }
@@ -51,7 +52,7 @@ const Login = () => {
     <div className="auth-container">
       <div className="auth-card">
         <h2>Welcome Back</h2>
-        <p className="auth-subtitle">Log in to manage your items</p>
+        <p className="auth-subtitle">Log in to manage your notes</p>
 
         {error && <div className="alert alert-error">{error}</div>}
 
