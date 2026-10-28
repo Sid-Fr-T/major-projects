@@ -1,12 +1,14 @@
-# Express & MongoDB Backend
+# Express & MongoDB Backend - Link Shortener
 
-A clean, modular Express backend with ES modules, Mongoose, JWT authentication, and user-scoped CRUD operations.
+A clean, modular Express backend with ES modules, Mongoose, JWT authentication, and user-scoped Link Shortener CRUD operations.
 
 ## Features
 
 - **ES Modules (`import`/`export`)**: Modern JavaScript syntax.
 - **Authentication**: JWT-based stateless authentication with password hashing via `bcryptjs`.
-- **User Scoping**: Items are tied to the authenticated user; users can only view, update, and delete their own items.
+- **User Scoping**: Links are tied to the authenticated user; users can only view and delete their own links.
+- **Link Shortening**: Generates random 6-character unique alphanumeric short codes.
+- **Public Redirection & Click Tracking**: `/s/:shortCode` atomically increments click count and redirects to `originalUrl`.
 - **MongoDB & Mongoose**: Schemas with validation, defaults, and timestamps.
 - **CORS & Environment Variables**: Configured via `cors` and `dotenv`.
 
@@ -26,15 +28,15 @@ server/
     │   └── db.js         # MongoDB connection setup
     ├── controllers/
     │   ├── authController.js  # Registration and login logic
-    │   └── itemController.js  # User-scoped Item CRUD logic
+    │   └── linkController.js  # Link creation, listing, deletion, redirect logic
     ├── middleware/
     │   └── auth.js       # JWT verification middleware
     ├── models/
-    │   ├── Item.js       # Generic Item schema & model
+    │   ├── Link.js       # Link schema & model (originalUrl, shortCode, clicks, user)
     │   └── User.js       # User schema & model
     ├── routes/
     │   ├── authRoutes.js # Routes for /api/auth
-    │   └── itemRoutes.js # Protected routes for /api/items
+    │   └── linkRoutes.js # Protected routes for /api/links
     └── server.js         # Express app initialization and server entry point
 ```
 
@@ -52,7 +54,7 @@ server/
    Ensure `server/.env` is configured (or copy from `.env.example`):
    ```env
    PORT=5000
-   MONGO_URI=mongodb://localhost:27017/webdev_db
+   MONGO_URI=mongodb://localhost:27017/link_shortener
    JWT_SECRET=your_jwt_secret_key_change_in_production
    ```
 
@@ -77,88 +79,45 @@ server/
 | `POST` | `/api/auth/register` | Register a new user | No |
 | `POST` | `/api/auth/login` | Log in and receive JWT | No |
 
-#### Example: Register User (`POST /api/auth/register`)
-Request Body:
-```json
-{
-  "name": "Jane Doe",
-  "email": "jane@example.com",
-  "password": "password123"
-}
-```
-Response (`201 Created`):
-```json
-{
-  "message": "User registered successfully",
-  "token": "eyJhbGciOiJIUzI1NiIsIn...",
-  "user": {
-    "_id": "671df...",
-    "name": "Jane Doe",
-    "email": "jane@example.com",
-    "role": "user",
-    "createdAt": "2026-10-26T12:00:00.000Z"
-  }
-}
-```
-
-#### Example: Login (`POST /api/auth/login`)
-Request Body:
-```json
-{
-  "email": "jane@example.com",
-  "password": "password123"
-}
-```
-Response (`200 OK`):
-```json
-{
-  "message": "Login successful",
-  "token": "eyJhbGciOiJIUzI1NiIsIn...",
-  "user": {
-    "_id": "671df...",
-    "name": "Jane Doe",
-    "email": "jane@example.com",
-    "role": "user",
-    "createdAt": "2026-10-26T12:00:00.000Z"
-  }
-}
-```
-
 ---
 
-### 2. Item Routes (`/api/items`)
-> All item routes require the `Authorization` header: `Bearer <token>`
+### 2. Protected Link Routes (`/api/links`)
+> All link routes require the `Authorization` header: `Bearer <token>`
 
 | Method | Endpoint | Description | Auth Required |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/api/items` | Get all items for logged-in user | Yes |
-| `POST` | `/api/items` | Create a new item | Yes |
-| `GET` | `/api/items/:id` | Get single item by ID | Yes |
-| `PUT` | `/api/items/:id` | Update item by ID | Yes |
-| `DELETE` | `/api/items/:id` | Delete item by ID | Yes |
+| `GET` | `/api/links` | Get all links for logged-in user | Yes |
+| `POST` | `/api/links` | Create a new shortened link (`originalUrl`) | Yes |
+| `DELETE` | `/api/links/:id` | Delete link by ID | Yes |
 
-#### Example: Create Item (`POST /api/items`)
+#### Example: Create Link (`POST /api/links`)
 Headers:
 `Authorization: Bearer <token>`
 
 Request Body:
 ```json
 {
-  "title": "Build portfolio project",
-  "description": "Create full stack MERN app",
-  "status": "pending"
+  "originalUrl": "https://developer.mozilla.org/en-US/docs/Web/JavaScript"
 }
 ```
+
 Response (`201 Created`):
 ```json
 {
   "_id": "671e0...",
-  "title": "Build portfolio project",
-  "description": "Create full stack MERN app",
-  "status": "pending",
+  "originalUrl": "https://developer.mozilla.org/en-US/docs/Web/JavaScript",
+  "shortCode": "aB3dE9",
+  "clicks": 0,
   "user": "671df...",
-  "createdAt": "2026-10-26T12:05:00.000Z",
-  "updatedAt": "2026-10-26T12:05:00.000Z"
+  "createdAt": "2026-10-28T12:05:00.000Z",
+  "updatedAt": "2026-10-28T12:05:00.000Z"
 }
 ```
 
+---
+
+### 3. Public Short Link Redirect Route (`/s/:shortCode`)
+
+| Method | Endpoint | Description | Auth Required |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/s/:shortCode` | Increments link clicks and redirects to original URL | No (Public) |

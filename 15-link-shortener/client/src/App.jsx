@@ -7,6 +7,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
+import RedirectHandler from './pages/RedirectHandler';
 import './App.css';
 
 function App() {
@@ -21,6 +22,9 @@ function App() {
           {/* Public authentication routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+
+          {/* Public short link redirect handler if opened on client port */}
+          <Route path="/s/:shortCode" element={<RedirectHandler />} />
 
           {/* Protected routes: accessible only to logged-in users */}
           <Route
