@@ -1,30 +1,28 @@
-# React + Vite Frontend
+# React + Vite Frontend (Blog)
 
-A React frontend for the Item Management application built with Vite, React Router v7, and Axios.
+A React frontend for the Blog application built with Vite, React Router v7, and Axios.
 
 ## Features
 
-- **AuthContext**: Persists user data and JWT token to `localStorage`, providing `login`, `register`, and `logout` actions.
-- **Protected Routes**: Redirects unauthenticated users to `/login`.
-- **Pages**:
-  - `Login`: User authentication with validation and error alerts.
-  - `Register`: New user sign-up with password verification and error alerts.
-  - `Dashboard`: Full CRUD interface for items (title, description, status) scoped to the logged-in user.
-- **Navbar**: Displays the logged-in user's name and provides a quick logout button.
-- **Single Stylesheet (`App.css`)**: Responsive layout with modern CSS Grid card design and status badges (`pending`, `in-progress`, `done`).
+- **Public Home Page (`/`)**: Displays all published blog posts with author attribution, creation date, and excerpt.
+- **Single Post View (`/post/:id`)**: Dedicated article reading page with full post content. Includes author controls (Edit/Delete) if viewed by the author.
+- **AuthContext**: Persists user session and JWT token to `localStorage`, providing `login`, `register`, and `logout` actions.
+- **Protected Dashboard (`/dashboard`)**: Authoring studio to compose new blog posts (`title`, `content`) and manage user's own published articles.
+- **Navbar**: Displays application branding, navigation links (`Home`, `My Posts`), user greeting, and logout button.
+- **Single Stylesheet (`App.css`)**: Responsive layout with modern CSS Grid card design, article typography, and form controls.
 
 ---
 
 ## Getting Started
 
-1. **Start the Express backend** (in `server/` folder):
+1. **Start the Express backend** (in `server/` directory):
    ```bash
    cd server
    npm run dev
    ```
    Backend runs at `http://localhost:5000`.
 
-2. **Start the React frontend** (in `client/` folder):
+2. **Start the React frontend** (in `client/` directory):
    ```bash
    cd client
    npm run dev

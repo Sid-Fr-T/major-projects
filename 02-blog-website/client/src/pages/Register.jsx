@@ -19,8 +19,9 @@ const Register = () => {
 
   // If already logged in, redirect to dashboard
   useEffect(() => {
+    document.title = 'MERN Blog - Register';
     if (token) {
-      navigate('/');
+      navigate('/dashboard');
     }
   }, [token, navigate]);
 
@@ -46,7 +47,7 @@ const Register = () => {
     setLoading(true);
     try {
       await register(formData.name, formData.email, formData.password);
-      navigate('/');
+      navigate('/dashboard');
     } catch (err) {
       const message =
         err.response?.data?.message || 'Registration failed. Please try again.';
@@ -60,7 +61,7 @@ const Register = () => {
     <div className="auth-container">
       <div className="auth-card">
         <h2>Create an Account</h2>
-        <p className="auth-subtitle">Sign up to start organizing your items</p>
+        <p className="auth-subtitle">Sign up to start publishing your blog posts</p>
 
         {error && <div className="alert alert-error">{error}</div>}
 

@@ -1,13 +1,13 @@
-# Express & MongoDB Backend
+# Express & MongoDB Backend (Blog API)
 
-A clean, modular Express backend with ES modules, Mongoose, JWT authentication, and user-scoped CRUD operations.
+A clean, modular Express backend with ES modules, Mongoose, JWT authentication, and author-scoped blog post CRUD operations.
 
 ## Features
 
 - **ES Modules (`import`/`export`)**: Modern JavaScript syntax.
 - **Authentication**: JWT-based stateless authentication with password hashing via `bcryptjs`.
-- **User Scoping**: Items are tied to the authenticated user; users can only view, update, and delete their own items.
-- **MongoDB & Mongoose**: Schemas with validation, defaults, and timestamps.
+- **Author Scoping**: Posts are linked to their author; any user can read all posts, but only authors can update and delete their own posts.
+- **MongoDB & Mongoose**: Schemas with validation and automatic `createdAt` / `updatedAt` timestamps.
 - **CORS & Environment Variables**: Configured via `cors` and `dotenv`.
 
 ---
@@ -25,16 +25,16 @@ server/
     ├── config/
     │   └── db.js         # MongoDB connection setup
     ├── controllers/
-    │   ├── authController.js  # Registration and login logic
-    │   └── itemController.js  # User-scoped Item CRUD logic
+    │   ├── authController.js  # Registration and login logic (kept untouched)
+    │   └── postController.js  # Blog Post CRUD logic with author scoping
     ├── middleware/
     │   └── auth.js       # JWT verification middleware
     ├── models/
-    │   ├── Item.js       # Generic Item schema & model
+    │   ├── Post.js       # Post schema: title, content, author, createdAt
     │   └── User.js       # User schema & model
     ├── routes/
     │   ├── authRoutes.js # Routes for /api/auth
-    │   └── itemRoutes.js # Protected routes for /api/items
+    │   └── postRoutes.js # Routes for /api/posts
     └── server.js         # Express app initialization and server entry point
 ```
 
@@ -52,8 +52,8 @@ server/
    Ensure `server/.env` is configured (or copy from `.env.example`):
    ```env
    PORT=5000
-   MONGO_URI=mongodb://localhost:27017/webdev_db
-   JWT_SECRET=your_jwt_secret_key_change_in_production
+   MONGO_URI=your_mongodb_connection_string
+   JWT_SECRET=your_jwt_secret_key
    ```
 
 3. **Run the server**:
@@ -77,88 +77,15 @@ server/
 | `POST` | `/api/auth/register` | Register a new user | No |
 | `POST` | `/api/auth/login` | Log in and receive JWT | No |
 
-#### Example: Register User (`POST /api/auth/register`)
-Request Body:
-```json
-{
-  "name": "Jane Doe",
-  "email": "jane@example.com",
-  "password": "password123"
-}
-```
-Response (`201 Created`):
-```json
-{
-  "message": "User registered successfully",
-  "token": "eyJhbGciOiJIUzI1NiIsIn...",
-  "user": {
-    "_id": "671df...",
-    "name": "Jane Doe",
-    "email": "jane@example.com",
-    "role": "user",
-    "createdAt": "2026-10-26T12:00:00.000Z"
-  }
-}
-```
-
-#### Example: Login (`POST /api/auth/login`)
-Request Body:
-```json
-{
-  "email": "jane@example.com",
-  "password": "password123"
-}
-```
-Response (`200 OK`):
-```json
-{
-  "message": "Login successful",
-  "token": "eyJhbGciOiJIUzI1NiIsIn...",
-  "user": {
-    "_id": "671df...",
-    "name": "Jane Doe",
-    "email": "jane@example.com",
-    "role": "user",
-    "createdAt": "2026-10-26T12:00:00.000Z"
-  }
-}
-```
-
 ---
 
-### 2. Item Routes (`/api/items`)
-> All item routes require the `Authorization` header: `Bearer <token>`
+### 2. Post Routes (`/api/posts`)
 
 | Method | Endpoint | Description | Auth Required |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/api/items` | Get all items for logged-in user | Yes |
-| `POST` | `/api/items` | Create a new item | Yes |
-| `GET` | `/api/items/:id` | Get single item by ID | Yes |
-| `PUT` | `/api/items/:id` | Update item by ID | Yes |
-| `DELETE` | `/api/items/:id` | Delete item by ID | Yes |
-
-#### Example: Create Item (`POST /api/items`)
-Headers:
-`Authorization: Bearer <token>`
-
-Request Body:
-```json
-{
-  "title": "Build portfolio project",
-  "description": "Create full stack MERN app",
-  "status": "pending"
-}
-```
-Response (`201 Created`):
-```json
-{
-  "_id": "671e0...",
-  "title": "Build portfolio project",
-  "description": "Create full stack MERN app",
-  "status": "pending",
-  "user": "671df...",
-  "createdAt": "2026-10-26T12:05:00.000Z",
-  "updatedAt": "2026-10-26T12:05:00.000Z"
-}
-```
-
+| `GET` | `/api/posts` | Get all blog posts (public feed) | No |
+| `GET` | `/api/posts/:id` | Get single post by ID | No |
+| `GET` | `/api/posts/mine` | Get all posts created by authenticated user | Yes (`Bearer <token>`) |
+| `POST` | `/api/posts` | Create a new blog post (`title`, `content`) | Yes (`Bearer <token>`) |
+| `PUT` | `/api/posts/:id` | Update author's own post by ID | Yes (`Bearer <token>`) |
+| `DELETE` | `/api/posts/:id` | Delete author's own post by ID | Yes (`Bearer <token>`) |

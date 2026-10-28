@@ -15,8 +15,9 @@ const Login = () => {
 
   // If already logged in, redirect to dashboard
   useEffect(() => {
+    document.title = 'MERN Blog - Login';
     if (token) {
-      navigate('/');
+      navigate('/dashboard');
     }
   }, [token, navigate]);
 
@@ -37,7 +38,7 @@ const Login = () => {
     setLoading(true);
     try {
       await login(formData.email, formData.password);
-      navigate('/');
+      navigate('/dashboard');
     } catch (err) {
       const message =
         err.response?.data?.message || 'Login failed. Please check your credentials.';
@@ -51,7 +52,7 @@ const Login = () => {
     <div className="auth-container">
       <div className="auth-card">
         <h2>Welcome Back</h2>
-        <p className="auth-subtitle">Log in to manage your items</p>
+        <p className="auth-subtitle">Log in to create and manage your blog posts</p>
 
         {error && <div className="alert alert-error">{error}</div>}
 
