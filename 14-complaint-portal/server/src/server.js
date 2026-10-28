@@ -6,7 +6,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import connectDB from './config/db.js';
 import authRoutes from './routes/authRoutes.js';
-import itemRoutes from './routes/itemRoutes.js';
+import complaintRoutes from './routes/complaintRoutes.js';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -25,11 +25,12 @@ app.use(express.urlencoded({ extended: true }));
 
 // API Routes
 app.use('/api/auth', authRoutes);
-app.use('/api/items', itemRoutes);
+app.use('/api/complaints', complaintRoutes);
+app.use('/api/items', complaintRoutes);
 
 // Root / Health check route
 app.get('/', (req, res) => {
-  res.json({ message: 'API is running...' });
+  res.json({ message: 'Complaint Portal API is running...' });
 });
 
 // 404 Not Found handler for undefined routes

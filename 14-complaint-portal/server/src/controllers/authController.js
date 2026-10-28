@@ -40,12 +40,16 @@ export const register = async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
+    // The first registered user automatically becomes admin; subsequent users default to 'user'
+    const userCount = await User.countDocuments();
+    const assignedRole = userCount === 0 ? 'admin' : (role || 'user');
+
     // Create new user in database
     const user = await User.create({
       name,
       email,
       password: hashedPassword,
-      role: role || 'user',
+      role: assignedRole,
     });
 
     // Generate JWT token
