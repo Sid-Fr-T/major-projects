@@ -6,7 +6,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import connectDB from './config/db.js';
 import authRoutes from './routes/authRoutes.js';
-import itemRoutes from './routes/itemRoutes.js';
+import expenseRoutes from './routes/expenseRoutes.js';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -25,7 +25,8 @@ app.use(express.urlencoded({ extended: true }));
 
 // API Routes
 app.use('/api/auth', authRoutes);
-app.use('/api/items', itemRoutes);
+app.use('/api/expenses', expenseRoutes);
+app.use('/api/items', expenseRoutes);
 
 // Root / Health check route
 app.get('/', (req, res) => {

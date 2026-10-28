@@ -1,17 +1,17 @@
-# React + Vite Frontend
+# Expense Tracker - React + Vite Frontend
 
-A React frontend for the Item Management application built with Vite, React Router v7, and Axios.
+A clean, modern React frontend for the Expense Tracker application built with Vite, React Router v7, and Axios.
 
 ## Features
 
 - **AuthContext**: Persists user data and JWT token to `localStorage`, providing `login`, `register`, and `logout` actions.
-- **Protected Routes**: Redirects unauthenticated users to `/login`.
-- **Pages**:
-  - `Login`: User authentication with validation and error alerts.
-  - `Register`: New user sign-up with password verification and error alerts.
-  - `Dashboard`: Full CRUD interface for items (title, description, status) scoped to the logged-in user.
-- **Navbar**: Displays the logged-in user's name and provides a quick logout button.
-- **Single Stylesheet (`App.css`)**: Responsive layout with modern CSS Grid card design and status badges (`pending`, `in-progress`, `done`).
+- **Protected Routes**: Restricts the dashboard to authenticated users, automatically redirecting guests to `/login`.
+- **Financial Summary Cards**: Real-time calculated cards showing **Total Income**, **Total Expense**, and **Net Balance** (with color-coded positive/negative states).
+- **Transaction Form**: Add new income or expense with title, amount, category, type (`income` or `expense`), and date.
+- **Filter Tabs**: Quickly toggle between viewing `All`, `Income`, or `Expense` transactions.
+- **Transaction List with In-Place Editing**: View transactions formatted with currency, date, category tag, and type indicator; edit or delete transactions with instant state updates.
+- **Navbar**: Displays the app brand, current user greeting, and logout action.
+- **Clean Responsive CSS (`App.css`)**: Responsive layout for mobile, tablet, and desktop screens.
 
 ---
 
