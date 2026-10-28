@@ -1,12 +1,13 @@
 {
   "name": "server",
   "version": "1.0.0",
-  "description": "Express backend with MongoDB, JWT authentication, and Item CRUD",
+  "description": "Express backend with MongoDB, JWT authentication, and Recipe Book CRUD & Favorites",
   "type": "module",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "node --watch src/server.js"
+    "dev": "node --watch src/server.js",
+    "seed": "node src/seed.js"
   },
   "keywords": ["express", "mongodb", "jwt", "auth"],
   "author": "",

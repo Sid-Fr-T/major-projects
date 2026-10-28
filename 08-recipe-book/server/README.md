@@ -1,14 +1,16 @@
-# Express & MongoDB Backend
+# Recipe Book Backend
 
-A clean, modular Express backend with ES modules, Mongoose, JWT authentication, and user-scoped CRUD operations.
+A modular Express backend with ES modules, MongoDB (Mongoose), JWT authentication, public recipe title search, recipe CRUD operations, and user favorites tracking.
 
 ## Features
 
-- **ES Modules (`import`/`export`)**: Modern JavaScript syntax.
+- **ES Modules (`import`/`export`)**: Modern JavaScript syntax throughout.
 - **Authentication**: JWT-based stateless authentication with password hashing via `bcryptjs`.
-- **User Scoping**: Items are tied to the authenticated user; users can only view, update, and delete their own items.
-- **MongoDB & Mongoose**: Schemas with validation, defaults, and timestamps.
-- **CORS & Environment Variables**: Configured via `cors` and `dotenv`.
+- **Recipe Model**: Includes `title`, `ingredients` (array of strings), `steps`, `category`, `imageUrl`, author (`user`), and `savedBy` (array of user IDs).
+- **Public Title Search**: Anyone can search recipes by title (case-insensitive regex search) and filter by category.
+- **Protected Recipe Creation & Management**: Logged-in users can create recipes, while only original authors can edit or delete their recipes.
+- **Save / Unsave Favorites**: Authenticated users can bookmark recipes and fetch their collection via `/api/recipes/saved`.
+- **Database Seeder**: Pre-loaded with demo recipes and an author account.
 
 ---
 
@@ -25,16 +27,17 @@ server/
     ├── config/
     │   └── db.js         # MongoDB connection setup
     ├── controllers/
-    │   ├── authController.js  # Registration and login logic
-    │   └── itemController.js  # User-scoped Item CRUD logic
+    │   ├── authController.js    # Registration and login logic
+    │   └── recipeController.js  # Recipe CRUD, search, and favorites logic
     ├── middleware/
     │   └── auth.js       # JWT verification middleware
     ├── models/
-    │   ├── Item.js       # Generic Item schema & model
+    │   ├── Recipe.js     # Recipe schema & model
     │   └── User.js       # User schema & model
     ├── routes/
-    │   ├── authRoutes.js # Routes for /api/auth
-    │   └── itemRoutes.js # Protected routes for /api/items
+    │   ├── authRoutes.js   # Routes for /api/auth
+    │   └── recipeRoutes.js # Routes for /api/recipes
+    ├── seed.js           # Sample database seeder
     └── server.js         # Express app initialization and server entry point
 ```
 
@@ -49,14 +52,19 @@ server/
    ```
 
 2. **Configure `.env`**:
-   Ensure `server/.env` is configured (or copy from `.env.example`):
+   Ensure `server/.env` is configured:
    ```env
    PORT=5000
-   MONGO_URI=mongodb://localhost:27017/webdev_db
-   JWT_SECRET=your_jwt_secret_key_change_in_production
+   MONGO_URI=your_mongodb_connection_string
+   JWT_SECRET=your_jwt_secret_key
    ```
 
-3. **Run the server**:
+3. **(Optional) Seed sample data**:
+   ```bash
+   npm run seed
+   ```
+
+4. **Run the server**:
    - Development mode (with auto-reload):
      ```bash
      npm run dev
@@ -75,90 +83,18 @@ server/
 | Method | Endpoint | Description | Auth Required |
 | :--- | :--- | :--- | :--- |
 | `POST` | `/api/auth/register` | Register a new user | No |
-| `POST` | `/api/auth/login` | Log in and receive JWT | No |
-
-#### Example: Register User (`POST /api/auth/register`)
-Request Body:
-```json
-{
-  "name": "Jane Doe",
-  "email": "jane@example.com",
-  "password": "password123"
-}
-```
-Response (`201 Created`):
-```json
-{
-  "message": "User registered successfully",
-  "token": "eyJhbGciOiJIUzI1NiIsIn...",
-  "user": {
-    "_id": "671df...",
-    "name": "Jane Doe",
-    "email": "jane@example.com",
-    "role": "user",
-    "createdAt": "2026-10-26T12:00:00.000Z"
-  }
-}
-```
-
-#### Example: Login (`POST /api/auth/login`)
-Request Body:
-```json
-{
-  "email": "jane@example.com",
-  "password": "password123"
-}
-```
-Response (`200 OK`):
-```json
-{
-  "message": "Login successful",
-  "token": "eyJhbGciOiJIUzI1NiIsIn...",
-  "user": {
-    "_id": "671df...",
-    "name": "Jane Doe",
-    "email": "jane@example.com",
-    "role": "user",
-    "createdAt": "2026-10-26T12:00:00.000Z"
-  }
-}
-```
+| `POST` | `/api/auth/login` | Log in and receive JWT token | No |
 
 ---
 
-### 2. Item Routes (`/api/items`)
-> All item routes require the `Authorization` header: `Bearer <token>`
+### 2. Recipe Routes (`/api/recipes`)
 
 | Method | Endpoint | Description | Auth Required |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/api/items` | Get all items for logged-in user | Yes |
-| `POST` | `/api/items` | Create a new item | Yes |
-| `GET` | `/api/items/:id` | Get single item by ID | Yes |
-| `PUT` | `/api/items/:id` | Update item by ID | Yes |
-| `DELETE` | `/api/items/:id` | Delete item by ID | Yes |
-
-#### Example: Create Item (`POST /api/items`)
-Headers:
-`Authorization: Bearer <token>`
-
-Request Body:
-```json
-{
-  "title": "Build portfolio project",
-  "description": "Create full stack MERN app",
-  "status": "pending"
-}
-```
-Response (`201 Created`):
-```json
-{
-  "_id": "671e0...",
-  "title": "Build portfolio project",
-  "description": "Create full stack MERN app",
-  "status": "pending",
-  "user": "671df...",
-  "createdAt": "2026-10-26T12:05:00.000Z",
-  "updatedAt": "2026-10-26T12:05:00.000Z"
-}
-```
-
+| `GET` | `/api/recipes` | Search & browse all recipes (`?search=...`, `?category=...`) | No (Public) |
+| `GET` | `/api/recipes/saved` | Get recipes saved/favorited by logged-in user | Yes |
+| `GET` | `/api/recipes/:id` | Get details of a single recipe | No (Public) |
+| `POST` | `/api/recipes` | Create a new recipe | Yes |
+| `PUT` | `/api/recipes/:id` | Update an existing recipe (creator only) | Yes |
+| `DELETE` | `/api/recipes/:id` | Delete a recipe (creator only) | Yes |
+| `POST` | `/api/recipes/:id/favorite` | Toggle save/unsave recipe as favorite | Yes |

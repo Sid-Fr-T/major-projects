@@ -19,6 +19,7 @@ const Register = () => {
 
   // If already logged in, redirect to dashboard
   useEffect(() => {
+    document.title = 'Create Account - Recipe Book';
     if (token) {
       navigate('/');
     }
@@ -60,7 +61,7 @@ const Register = () => {
     <div className="auth-container">
       <div className="auth-card">
         <h2>Create an Account</h2>
-        <p className="auth-subtitle">Sign up to start organizing your items</p>
+        <p className="auth-subtitle">Sign up to share recipes and save your favorites</p>
 
         {error && <div className="alert alert-error">{error}</div>}
 

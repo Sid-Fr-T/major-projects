@@ -1,5 +1,5 @@
 // client/src/components/Navbar.jsx
-// Navigation bar displaying application title, user greeting, and logout button
+// Navigation bar displaying application title, recipes navigation, user greeting, and auth controls
 
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/useAuth';
@@ -17,15 +17,24 @@ const Navbar = () => {
     <nav className="navbar">
       <div className="nav-container">
         <Link to="/" className="nav-brand">
-          TaskApp
+          <span className="brand-icon">🍳</span>
+          <span>Recipe Book</span>
         </Link>
+
         <div className="nav-actions">
+          <Link to="/" className="nav-link">
+            Explore
+          </Link>
+
           {user ? (
             <>
+              <Link to="/saved" className="nav-link nav-link-saved">
+                ❤️ Saved Recipes
+              </Link>
               <span className="nav-user">
                 Hello, <strong>{user.name}</strong>
               </span>
-              <button onClick={handleLogout} className="btn btn-secondary">
+              <button onClick={handleLogout} className="btn btn-secondary-sm">
                 Logout
               </button>
             </>

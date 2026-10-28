@@ -6,9 +6,15 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import connectDB from './config/db.js';
 import authRoutes from './routes/authRoutes.js';
-import itemRoutes from './routes/itemRoutes.js';
+import recipeRoutes from './routes/recipeRoutes.js';
 
-// Load environment variables from .env file
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// Load environment variables from server/.env (or root .env as fallback)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 dotenv.config();
 
 // Connect to MongoDB
@@ -25,11 +31,12 @@ app.use(express.urlencoded({ extended: true }));
 
 // API Routes
 app.use('/api/auth', authRoutes);
-app.use('/api/items', itemRoutes);
+app.use('/api/recipes', recipeRoutes);
+app.use('/api/items', recipeRoutes); // Alias for backwards compatibility
 
 // Root / Health check route
 app.get('/', (req, res) => {
-  res.json({ message: 'API is running...' });
+  res.json({ message: 'Recipe Book API is running...' });
 });
 
 // 404 Not Found handler for undefined routes
@@ -50,4 +57,3 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
 });
-
