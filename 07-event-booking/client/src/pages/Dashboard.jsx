@@ -1,280 +1,461 @@
 // client/src/pages/Dashboard.jsx
-// Dashboard for viewing, creating, updating, and deleting items scoped to the user
+// Event Booking dashboard: browse all events, register, cancel bookings, view My Bookings, and create new events
 
 import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import API from '../api/axios';
+import { useAuth } from '../context/useAuth';
 
-const Dashboard = () => {
-  const [items, setItems] = useState([]);
+const Dashboard = ({ initialTab = 'all' }) => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const [activeTab, setActiveTab] = useState(
+    location.pathname === '/my-bookings' || initialTab === 'my-bookings'
+      ? 'my-bookings'
+      : 'all'
+  );
+
+  const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
+  const [actionId, setActionId] = useState(null);
 
-  // State for creating a new item
-  const [newItem, setNewItem] = useState({
-    title: '',
-    description: '',
-    status: 'pending',
-  });
+  // Toggle for host / create event form
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [createLoading, setCreateLoading] = useState(false);
-
-  // State for tracking which item is currently being edited
-  const [editingId, setEditingId] = useState(null);
-  const [editFormData, setEditFormData] = useState({
+  const [newEvent, setNewEvent] = useState({
     title: '',
     description: '',
-    status: 'pending',
+    date: '',
+    location: '',
+    seats: '',
   });
 
-  // Fetch all items belonging to the authenticated user on mount
+  // Synchronize tab if route changes
   useEffect(() => {
-    let ignore = false;
+    if (location.pathname === '/my-bookings') {
+      setActiveTab('my-bookings');
+    } else if (location.pathname === '/') {
+      setActiveTab('all');
+    }
+  }, [location.pathname]);
 
-    API.get('/items')
-      .then((res) => {
-        if (!ignore) {
-          setItems(res.data);
-          setError('');
-        }
-      })
-      .catch((err) => {
-        if (!ignore) {
-          setError(err.response?.data?.message || 'Failed to load items.');
-        }
-      })
-      .finally(() => {
-        if (!ignore) {
-          setLoading(false);
-        }
-      });
-
-    return () => {
-      ignore = true;
-    };
-  }, []);
-
-  // Handle new item form input changes
-  const handleNewChange = (e) => {
-    setNewItem((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  // Fetch all events on component mount
+  const fetchEvents = async () => {
+    try {
+      setLoading(true);
+      const res = await API.get('/events');
+      setEvents(res.data);
+      setError('');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to load events.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Submit new item
+  useEffect(() => {
+    fetchEvents();
+  }, []);
+
+  // Clear success notification after 4 seconds
+  useEffect(() => {
+    if (successMsg) {
+      const timer = setTimeout(() => setSuccessMsg(''), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [successMsg]);
+
+  // Check if current logged-in user is registered for a specific event
+  const isBookedByUser = (event) => {
+    if (!user || !event.registeredUsers) return false;
+    return event.registeredUsers.some((uid) => {
+      const regId = typeof uid === 'object' && uid !== null ? uid._id : uid;
+      return String(regId) === String(user._id);
+    });
+  };
+
+  // Filter events based on active tab
+  const displayedEvents =
+    activeTab === 'my-bookings'
+      ? events.filter((e) => isBookedByUser(e))
+      : events;
+
+  const myBookingsCount = events.filter((e) => isBookedByUser(e)).length;
+
+  // Handle Event Registration (seats decrease, duplicate prevented)
+  const handleRegister = async (eventId, eventTitle) => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+
+    setActionId(eventId);
+    setError('');
+    try {
+      const res = await API.post(`/events/${eventId}/register`);
+      const updatedEvent = res.data.event;
+
+      setEvents((prev) =>
+        prev.map((ev) => (ev._id === eventId ? updatedEvent : ev))
+      );
+      setSuccessMsg(`Reserved your seat for "${eventTitle}"!`);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Registration failed.');
+    } finally {
+      setActionId(null);
+    }
+  };
+
+  // Handle Booking Cancellation (seats increase, removed from user bookings)
+  const handleCancelBooking = async (eventId, eventTitle) => {
+    if (!user) return;
+
+    if (!window.confirm(`Are you sure you want to cancel your booking for "${eventTitle}"?`)) {
+      return;
+    }
+
+    setActionId(eventId);
+    setError('');
+    try {
+      const res = await API.post(`/events/${eventId}/cancel`);
+      const updatedEvent = res.data.event;
+
+      setEvents((prev) =>
+        prev.map((ev) => (ev._id === eventId ? updatedEvent : ev))
+      );
+      setSuccessMsg(`Cancelled booking for "${eventTitle}". Seat freed.`);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Cancellation failed.');
+    } finally {
+      setActionId(null);
+    }
+  };
+
+  // Handle creating a new event
+  const handleNewChange = (e) => {
+    const { name, value } = e.target;
+    setNewEvent((prev) => ({ ...prev, [name]: value }));
+  };
+
   const handleCreateSubmit = async (e) => {
     e.preventDefault();
-    if (!newItem.title.trim()) return;
+    if (!newEvent.title.trim() || !newEvent.date || !newEvent.location.trim() || !newEvent.seats) {
+      setError('Please fill in all required event fields.');
+      return;
+    }
 
     setCreateLoading(true);
+    setError('');
     try {
-      const res = await API.post('/items', newItem);
-      setItems((prev) => [res.data, ...prev]);
-      setNewItem({ title: '', description: '', status: 'pending' });
+      const res = await API.post('/events', {
+        title: newEvent.title.trim(),
+        description: newEvent.description.trim(),
+        date: newEvent.date,
+        location: newEvent.location.trim(),
+        seats: Number(newEvent.seats),
+      });
+
+      setEvents((prev) => [...prev, res.data].sort((a, b) => new Date(a.date) - new Date(b.date)));
+      setNewEvent({ title: '', description: '', date: '', location: '', seats: '' });
+      setShowCreateModal(false);
+      setSuccessMsg('New event posted successfully!');
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to create item.');
+      setError(err.response?.data?.message || 'Failed to create event.');
     } finally {
       setCreateLoading(false);
     }
   };
 
-  // Enable edit mode for a specific card
-  const startEdit = (item) => {
-    setEditingId(item._id);
-    setEditFormData({
-      title: item.title,
-      description: item.description || '',
-      status: item.status || 'pending',
-    });
-  };
-
-  // Cancel edit mode
-  const cancelEdit = () => {
-    setEditingId(null);
-    setEditFormData({ title: '', description: '', status: 'pending' });
-  };
-
-  // Save updated item
-  const handleUpdateSubmit = async (id) => {
-    if (!editFormData.title.trim()) return;
+  // Handle deleting an event
+  const handleDeleteEvent = async (eventId, eventTitle) => {
+    if (!window.confirm(`Delete the event "${eventTitle}" permanently?`)) return;
 
     try {
-      const res = await API.put(`/items/${id}`, editFormData);
-      setItems((prev) =>
-        prev.map((item) => (item._id === id ? res.data : item))
-      );
-      setEditingId(null);
+      await API.delete(`/events/${eventId}`);
+      setEvents((prev) => prev.filter((ev) => ev._id !== eventId));
+      setSuccessMsg(`Event "${eventTitle}" deleted.`);
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to update item.');
+      setError(err.response?.data?.message || 'Failed to delete event.');
     }
   };
 
-  // Delete an item
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this item?')) return;
-
+  // Helper date formatter
+  const formatDate = (dateString) => {
     try {
-      await API.delete(`/items/${id}`);
-      setItems((prev) => prev.filter((item) => item._id !== id));
-    } catch (err) {
-      alert(err.response?.data?.message || 'Failed to delete item.');
+      const d = new Date(dateString);
+      return d.toLocaleDateString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch {
+      return dateString;
     }
   };
 
   return (
     <div className="dashboard-container">
-      {/* Top Creation Card */}
-      <section className="create-section">
-        <h2>Add New Item</h2>
-        <form onSubmit={handleCreateSubmit} className="create-form">
-          <div className="form-row">
-            <input
-              type="text"
-              name="title"
-              value={newItem.title}
-              onChange={handleNewChange}
-              placeholder="Item title *"
-              required
-              className="input-title"
-            />
-            <select
-              name="status"
-              value={newItem.status}
-              onChange={handleNewChange}
-              className="select-status"
-            >
-              <option value="pending">Pending</option>
-              <option value="in-progress">In Progress</option>
-              <option value="done">Done</option>
-            </select>
-          </div>
-          <textarea
-            name="description"
-            value={newItem.description}
-            onChange={handleNewChange}
-            placeholder="Item description (optional)"
-            rows="2"
-            className="input-desc"
-          ></textarea>
+      {/* Hero / Header Section */}
+      <section className="dashboard-hero">
+        <div className="hero-content">
+          <h1>Discover & Book Remarkable Events</h1>
+          <p className="hero-subtext">
+            Explore conferences, workshops, and meetups. Reserve your seat with one click.
+          </p>
+        </div>
+        {user && (
           <button
-            type="submit"
-            className="btn btn-primary"
-            disabled={createLoading}
+            onClick={() => setShowCreateModal(!showCreateModal)}
+            className="btn btn-primary create-toggle-btn"
           >
-            {createLoading ? 'Adding...' : 'Add Item'}
+            {showCreateModal ? '✕ Close Form' : '+ Host New Event'}
           </button>
-        </form>
+        )}
       </section>
 
-      {/* Items Section */}
-      <section className="items-section">
-        <div className="items-header">
-          <h2>Your Items</h2>
-          <span className="items-count">({items.length})</span>
-        </div>
+      {/* Success Notification */}
+      {successMsg && <div className="alert alert-success">{successMsg}</div>}
 
-        {error && <div className="alert alert-error">{error}</div>}
+      {/* Error Notification */}
+      {error && <div className="alert alert-error">{error}</div>}
 
+      {/* Create Event Form (Visible when toggled) */}
+      {showCreateModal && user && (
+        <section className="create-section">
+          <h2>Create New Event</h2>
+          <form onSubmit={handleCreateSubmit} className="create-form">
+            <div className="form-row">
+              <div className="form-group flex-2">
+                <label htmlFor="title">Event Title *</label>
+                <input
+                  id="title"
+                  type="text"
+                  name="title"
+                  value={newEvent.title}
+                  onChange={handleNewChange}
+                  placeholder="e.g. AI Summit 2026"
+                  required
+                />
+              </div>
+
+              <div className="form-group flex-1">
+                <label htmlFor="seats">Total Seats *</label>
+                <input
+                  id="seats"
+                  type="number"
+                  name="seats"
+                  min="1"
+                  value={newEvent.seats}
+                  onChange={handleNewChange}
+                  placeholder="e.g. 50"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group flex-1">
+                <label htmlFor="date">Date & Time *</label>
+                <input
+                  id="date"
+                  type="datetime-local"
+                  name="date"
+                  value={newEvent.date}
+                  onChange={handleNewChange}
+                  required
+                />
+              </div>
+
+              <div className="form-group flex-1">
+                <label htmlFor="location">Location *</label>
+                <input
+                  id="location"
+                  type="text"
+                  name="location"
+                  value={newEvent.location}
+                  onChange={handleNewChange}
+                  placeholder="e.g. San Francisco, CA or Online"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="description">Event Description</label>
+              <textarea
+                id="description"
+                name="description"
+                value={newEvent.description}
+                onChange={handleNewChange}
+                placeholder="What will attendees learn, experience, or network about?"
+                rows="3"
+                className="input-desc"
+              ></textarea>
+            </div>
+
+            <div className="form-actions">
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={createLoading}
+              >
+                {createLoading ? 'Publishing...' : 'Publish Event'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowCreateModal(false)}
+                className="btn btn-secondary"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </section>
+      )}
+
+      {/* Navigation Tabs */}
+      <div className="tabs-container">
+        <button
+          className={`tab-btn ${activeTab === 'all' ? 'active' : ''}`}
+          onClick={() => {
+            setActiveTab('all');
+            if (location.pathname !== '/') navigate('/');
+          }}
+        >
+          All Events ({events.length})
+        </button>
+        {user && (
+          <button
+            className={`tab-btn ${activeTab === 'my-bookings' ? 'active' : ''}`}
+            onClick={() => {
+              setActiveTab('my-bookings');
+              if (location.pathname !== '/my-bookings') navigate('/my-bookings');
+            }}
+          >
+            My Bookings ({myBookingsCount})
+          </button>
+        )}
+      </div>
+
+      {/* Events Listing Section */}
+      <section className="events-section">
         {loading ? (
-          <div className="loading-state">Loading items...</div>
-        ) : items.length === 0 ? (
+          <div className="loading-state">Loading upcoming events...</div>
+        ) : displayedEvents.length === 0 ? (
           <div className="empty-state">
-            <p>No items yet. Create your first item above!</p>
+            {activeTab === 'my-bookings' ? (
+              <>
+                <p>You haven't registered for any events yet.</p>
+                <button
+                  onClick={() => {
+                    setActiveTab('all');
+                    navigate('/');
+                  }}
+                  className="btn btn-primary-sm mt-3"
+                >
+                  Browse Available Events
+                </button>
+              </>
+            ) : (
+              <p>No events found. Be the first to create one!</p>
+            )}
           </div>
         ) : (
           <div className="card-grid">
-            {items.map((item) => {
-              const isEditing = editingId === item._id;
+            {displayedEvents.map((event) => {
+              const booked = isBookedByUser(event);
+              const isActionRunning = actionId === event._id;
+              const isSoldOut = event.seats <= 0;
+              const isCreator = user && event.createdBy && String(event.createdBy) === String(user._id);
 
               return (
-                <div key={item._id} className="item-card">
-                  {isEditing ? (
-                    // Card in Edit Mode
-                    <div className="card-edit-mode">
-                      <input
-                        type="text"
-                        value={editFormData.title}
-                        onChange={(e) =>
-                          setEditFormData((prev) => ({
-                            ...prev,
-                            title: e.target.value,
-                          }))
-                        }
-                        className="edit-input"
-                        placeholder="Title"
-                      />
-                      <textarea
-                        value={editFormData.description}
-                        onChange={(e) =>
-                          setEditFormData((prev) => ({
-                            ...prev,
-                            description: e.target.value,
-                          }))
-                        }
-                        className="edit-textarea"
-                        rows="3"
-                        placeholder="Description"
-                      />
-                      <select
-                        value={editFormData.status}
-                        onChange={(e) =>
-                          setEditFormData((prev) => ({
-                            ...prev,
-                            status: e.target.value,
-                          }))
-                        }
-                        className="edit-select"
-                      >
-                        <option value="pending">Pending</option>
-                        <option value="in-progress">In Progress</option>
-                        <option value="done">Done</option>
-                      </select>
-                      <div className="card-actions">
-                        <button
-                          onClick={() => handleUpdateSubmit(item._id)}
-                          className="btn btn-success-sm"
-                        >
-                          Save
-                        </button>
-                        <button
-                          onClick={cancelEdit}
-                          className="btn btn-secondary-sm"
-                        >
-                          Cancel
-                        </button>
-                      </div>
+                <div
+                  key={event._id}
+                  className={`item-card event-card ${booked ? 'event-card-booked' : ''}`}
+                >
+                  <div className="card-header">
+                    <h3 className="card-title">{event.title}</h3>
+                    {booked ? (
+                      <span className="badge badge-booked">✓ Booked</span>
+                    ) : isSoldOut ? (
+                      <span className="badge badge-soldout">Sold Out</span>
+                    ) : (
+                      <span className="badge badge-available">
+                        {event.seats} {event.seats === 1 ? 'seat' : 'seats'} left
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="event-meta">
+                    <div className="meta-item">
+                      <span className="meta-icon">📅</span>
+                      <span className="meta-text">{formatDate(event.date)}</span>
                     </div>
-                  ) : (
-                    // Card in View Mode
-                    <>
-                      <div className="card-header">
-                        <h3 className="card-title">{item.title}</h3>
-                        <span
-                          className={`status-badge status-${item.status || 'pending'}`}
+                    <div className="meta-item">
+                      <span className="meta-icon">📍</span>
+                      <span className="meta-text">{event.location}</span>
+                    </div>
+                    <div className="meta-item">
+                      <span className="meta-icon">🎟️</span>
+                      <span className="meta-text">
+                        <strong>{event.seats}</strong> available seats
+                      </span>
+                    </div>
+                  </div>
+
+                  <p className="card-description">
+                    {event.description || 'No detailed description provided for this event.'}
+                  </p>
+
+                  <div className="card-footer event-footer">
+                    <div className="event-action-buttons">
+                      {booked ? (
+                        <button
+                          onClick={() => handleCancelBooking(event._id, event.title)}
+                          disabled={isActionRunning}
+                          className="btn btn-danger-sm"
                         >
-                          {item.status || 'pending'}
-                        </span>
-                      </div>
-                      <p className="card-description">
-                        {item.description || 'No description provided.'}
-                      </p>
-                      <div className="card-footer">
-                        <span className="card-date">
-                          {new Date(item.createdAt).toLocaleDateString()}
-                        </span>
-                        <div className="card-actions">
-                          <button
-                            onClick={() => startEdit(item)}
-                            className="btn btn-secondary-sm"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDelete(item._id)}
-                            className="btn btn-danger-sm"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </div>
-                    </>
-                  )}
+                          {isActionRunning ? 'Cancelling...' : 'Cancel Booking'}
+                        </button>
+                      ) : isSoldOut ? (
+                        <button disabled className="btn btn-secondary-sm btn-disabled">
+                          Fully Booked
+                        </button>
+                      ) : user ? (
+                        <button
+                          onClick={() => handleRegister(event._id, event.title)}
+                          disabled={isActionRunning}
+                          className="btn btn-primary-sm"
+                        >
+                          {isActionRunning ? 'Registering...' : 'Register (Book Seat)'}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => navigate('/login')}
+                          className="btn btn-primary-sm"
+                        >
+                          Log in to Register
+                        </button>
+                      )}
+
+                      {isCreator && (
+                        <button
+                          onClick={() => handleDeleteEvent(event._id, event.title)}
+                          className="btn btn-secondary-sm delete-btn"
+                          title="Delete this event"
+                        >
+                          🗑️
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
               );
             })}
@@ -286,4 +467,3 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
-

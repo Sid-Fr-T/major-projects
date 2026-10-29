@@ -1,18 +1,33 @@
 // server/src/server.js
-// Main entry point for the Express backend server
+// Main entry point for the Event Booking Express backend server
 
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import connectDB from './config/db.js';
 import authRoutes from './routes/authRoutes.js';
-import itemRoutes from './routes/itemRoutes.js';
+import eventRoutes from './routes/eventRoutes.js';
+import Event from './models/Event.js';
+import { seedEvents } from './config/seedData.js';
 
 // Load environment variables from .env file
 dotenv.config();
 
-// Connect to MongoDB
-connectDB();
+// Connect to MongoDB and auto-seed initial events if collection is empty
+const startDatabase = async () => {
+  await connectDB();
+  try {
+    const count = await Event.countDocuments();
+    if (count === 0) {
+      await Event.insertMany(seedEvents);
+      console.log('Auto-seeded 5 initial events into database.');
+    }
+  } catch (err) {
+    console.error(`Auto-seed check warning: ${err.message}`);
+  }
+};
+
+startDatabase();
 
 const app = express();
 
@@ -25,11 +40,11 @@ app.use(express.urlencoded({ extended: true }));
 
 // API Routes
 app.use('/api/auth', authRoutes);
-app.use('/api/items', itemRoutes);
+app.use('/api/events', eventRoutes);
 
 // Root / Health check route
 app.get('/', (req, res) => {
-  res.json({ message: 'API is running...' });
+  res.json({ message: 'Event Booking API is running...' });
 });
 
 // 404 Not Found handler for undefined routes
@@ -50,4 +65,3 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
 });
-

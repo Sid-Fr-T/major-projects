@@ -1,5 +1,5 @@
 // client/src/App.jsx
-// Main application layout with route configuration and protected routes
+// Main application layout with public event viewing, login, register, and protected bookings route
 
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
@@ -18,21 +18,24 @@ function App() {
       {/* Main page content area */}
       <main>
         <Routes>
+          {/* Public route: Everyone can view events */}
+          <Route path="/" element={<Dashboard />} />
+
           {/* Public authentication routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
 
-          {/* Protected routes: accessible only to logged-in users */}
+          {/* Protected route: My Bookings */}
           <Route
-            path="/"
+            path="/my-bookings"
             element={
               <ProtectedRoute>
-                <Dashboard />
+                <Dashboard initialTab="my-bookings" />
               </ProtectedRoute>
             }
           />
 
-          {/* Catch-all redirect to dashboard (or login if unauthenticated) */}
+          {/* Catch-all redirect to public events page */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
