@@ -1,6 +1,6 @@
-# React + Vite Frontend
+# React + Vite Frontend - Book Review
 
-A React frontend for the Item Management application built with Vite, React Router v7, and Axios.
+A responsive React frontend for the Book Review application built with Vite, React Router v7, and Axios.
 
 ## Features
 
@@ -9,9 +9,10 @@ A React frontend for the Item Management application built with Vite, React Rout
 - **Pages**:
   - `Login`: User authentication with validation and error alerts.
   - `Register`: New user sign-up with password verification and error alerts.
-  - `Dashboard`: Full CRUD interface for items (title, description, status) scoped to the logged-in user.
-- **Navbar**: Displays the logged-in user's name and provides a quick logout button.
-- **Single Stylesheet (`App.css`)**: Responsive layout with modern CSS Grid card design and status badges (`pending`, `in-progress`, `done`).
+  - `Dashboard`: Catalog of books with real-time search, "Add New Book" form, average rating preview, and link to book details.
+  - `BookDetails`: Dedicated book page showing book overview, average rating badge, community review feed, and review form (enforcing one review per user).
+- **Navbar**: Displays the "Book Review" brand, user greeting, and logout button.
+- **Single Stylesheet (`App.css`)**: Responsive layout with modern card grid, star rating graphics, and book cover display.
 
 ---
 

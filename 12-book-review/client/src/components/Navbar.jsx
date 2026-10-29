@@ -17,11 +17,14 @@ const Navbar = () => {
     <nav className="navbar">
       <div className="nav-container">
         <Link to="/" className="nav-brand">
-          TaskApp
+          <span className="brand-icon">📚</span> Book Review
         </Link>
         <div className="nav-actions">
           {user ? (
             <>
+              <Link to="/" className="nav-link">
+                All Books
+              </Link>
               <span className="nav-user">
                 Hello, <strong>{user.name}</strong>
               </span>

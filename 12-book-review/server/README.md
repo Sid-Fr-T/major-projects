@@ -1,13 +1,15 @@
-# Express & MongoDB Backend
+# Express & MongoDB Backend - Book Review API
 
-A clean, modular Express backend with ES modules, Mongoose, JWT authentication, and user-scoped CRUD operations.
+Express backend with ES modules, Mongoose, JWT authentication, and Book Review CRUD operations with calculated rating aggregations.
 
 ## Features
 
 - **ES Modules (`import`/`export`)**: Modern JavaScript syntax.
 - **Authentication**: JWT-based stateless authentication with password hashing via `bcryptjs`.
-- **User Scoping**: Items are tied to the authenticated user; users can only view, update, and delete their own items.
-- **MongoDB & Mongoose**: Schemas with validation, defaults, and timestamps.
+- **Book Catalog**: Add, list, view, and delete books with cover images and authors.
+- **Reviews & Ratings**: Post reviews with 1-5 ratings and comments; enforced single review per user per book.
+- **Aggregation**: Computes average rating and review counts on the fly.
+- **MongoDB & Mongoose**: Schemas with validation, defaults, unique compound indexes, and timestamps.
 - **CORS & Environment Variables**: Configured via `cors` and `dotenv`.
 
 ---
@@ -18,7 +20,7 @@ A clean, modular Express backend with ES modules, Mongoose, JWT authentication, 
 server/
 ├── .env                  # Environment variables (PORT, MONGO_URI, JWT_SECRET)
 ├── .env.example          # Example environment variable template
-├── .gitignore            # Git ignore rule for node_modules and .env
+├── .gitignore
 ├── package.json          # Node dependencies and scripts
 ├── README.md             # Backend documentation
 └── src/
@@ -26,15 +28,16 @@ server/
     │   └── db.js         # MongoDB connection setup
     ├── controllers/
     │   ├── authController.js  # Registration and login logic
-    │   └── itemController.js  # User-scoped Item CRUD logic
+    │   └── bookController.js  # Book and Review CRUD logic
     ├── middleware/
     │   └── auth.js       # JWT verification middleware
     ├── models/
-    │   ├── Item.js       # Generic Item schema & model
+    │   ├── Book.js       # Book schema & model (title, author, description, coverUrl, user)
+    │   ├── Review.js     # Review schema & model (book, user, rating, comment)
     │   └── User.js       # User schema & model
     ├── routes/
     │   ├── authRoutes.js # Routes for /api/auth
-    │   └── itemRoutes.js # Protected routes for /api/items
+    │   └── bookRoutes.js # Protected routes for /api/books
     └── server.js         # Express app initialization and server entry point
 ```
 
@@ -49,11 +52,11 @@ server/
    ```
 
 2. **Configure `.env`**:
-   Ensure `server/.env` is configured (or copy from `.env.example`):
+   Ensure `server/.env` is configured:
    ```env
    PORT=5000
-   MONGO_URI=mongodb://localhost:27017/webdev_db
-   JWT_SECRET=your_jwt_secret_key_change_in_production
+   MONGO_URI=your_mongodb_connection_string
+   JWT_SECRET=your_jwt_secret_key
    ```
 
 3. **Run the server**:
@@ -77,88 +80,14 @@ server/
 | `POST` | `/api/auth/register` | Register a new user | No |
 | `POST` | `/api/auth/login` | Log in and receive JWT | No |
 
-#### Example: Register User (`POST /api/auth/register`)
-Request Body:
-```json
-{
-  "name": "Jane Doe",
-  "email": "jane@example.com",
-  "password": "password123"
-}
-```
-Response (`201 Created`):
-```json
-{
-  "message": "User registered successfully",
-  "token": "eyJhbGciOiJIUzI1NiIsIn...",
-  "user": {
-    "_id": "671df...",
-    "name": "Jane Doe",
-    "email": "jane@example.com",
-    "role": "user",
-    "createdAt": "2026-10-26T12:00:00.000Z"
-  }
-}
-```
-
-#### Example: Login (`POST /api/auth/login`)
-Request Body:
-```json
-{
-  "email": "jane@example.com",
-  "password": "password123"
-}
-```
-Response (`200 OK`):
-```json
-{
-  "message": "Login successful",
-  "token": "eyJhbGciOiJIUzI1NiIsIn...",
-  "user": {
-    "_id": "671df...",
-    "name": "Jane Doe",
-    "email": "jane@example.com",
-    "role": "user",
-    "createdAt": "2026-10-26T12:00:00.000Z"
-  }
-}
-```
-
----
-
-### 2. Item Routes (`/api/items`)
-> All item routes require the `Authorization` header: `Bearer <token>`
+### 2. Books & Reviews Routes (`/api/books`)
+> All `/api/books` routes require the `Authorization` header: `Bearer <token>`
 
 | Method | Endpoint | Description | Auth Required |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/api/items` | Get all items for logged-in user | Yes |
-| `POST` | `/api/items` | Create a new item | Yes |
-| `GET` | `/api/items/:id` | Get single item by ID | Yes |
-| `PUT` | `/api/items/:id` | Update item by ID | Yes |
-| `DELETE` | `/api/items/:id` | Delete item by ID | Yes |
-
-#### Example: Create Item (`POST /api/items`)
-Headers:
-`Authorization: Bearer <token>`
-
-Request Body:
-```json
-{
-  "title": "Build portfolio project",
-  "description": "Create full stack MERN app",
-  "status": "pending"
-}
-```
-Response (`201 Created`):
-```json
-{
-  "_id": "671e0...",
-  "title": "Build portfolio project",
-  "description": "Create full stack MERN app",
-  "status": "pending",
-  "user": "671df...",
-  "createdAt": "2026-10-26T12:05:00.000Z",
-  "updatedAt": "2026-10-26T12:05:00.000Z"
-}
-```
-
+| `GET` | `/api/books` | Get all books with average ratings & review counts | Yes |
+| `POST` | `/api/books` | Create a new book | Yes |
+| `GET` | `/api/books/:id` | Get book details, average rating, and reviews | Yes |
+| `DELETE` | `/api/books/:id` | Delete book (creator only) and its reviews | Yes |
+| `POST` | `/api/books/:id/reviews` | Add review (1 review per user per book) | Yes |
+| `DELETE` | `/api/books/:id/reviews/:reviewId` | Delete a review (owner only) | Yes |

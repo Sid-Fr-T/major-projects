@@ -7,12 +7,13 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
+import BookDetails from './pages/BookDetails';
 import './App.css';
 
 function App() {
   return (
     <div className="app-wrapper">
-      {/* Top Navbar accessible across the app */}
+      {/* Top Navbar */}
       <Navbar />
 
       {/* Main page content area */}
@@ -31,8 +32,16 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/books/:id"
+            element={
+              <ProtectedRoute>
+                <BookDetails />
+              </ProtectedRoute>
+            }
+          />
 
-          {/* Catch-all redirect to dashboard (or login if unauthenticated) */}
+          {/* Catch-all redirect to dashboard */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
