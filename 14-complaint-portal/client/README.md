@@ -1,32 +1,46 @@
-# React + Vite Frontend
+# Complaint Portal — Frontend (React + Vite)
 
-A React frontend for the Item Management application built with Vite, React Router v7, and Axios.
+A modern, responsive React frontend for the Complaint Portal application built with Vite, React Router v7, and Axios.
 
 ## Features
 
-- **AuthContext**: Persists user data and JWT token to `localStorage`, providing `login`, `register`, and `logout` actions.
-- **Protected Routes**: Redirects unauthenticated users to `/login`.
-- **Pages**:
-  - `Login`: User authentication with validation and error alerts.
-  - `Register`: New user sign-up with password verification and error alerts.
-  - `Dashboard`: Full CRUD interface for items (title, description, status) scoped to the logged-in user.
-- **Navbar**: Displays the logged-in user's name and provides a quick logout button.
-- **Single Stylesheet (`App.css`)**: Responsive layout with modern CSS Grid card design and status badges (`pending`, `in-progress`, `done`).
+- **AuthContext**: Persists user session and JWT token to `localStorage`, providing `login`, `register`, and `logout` actions.
+- **Protected Routes**: Restricts access to authenticated users, automatically redirecting guests to `/login`.
+- **Role-Aware Navigation & UI**:
+  - Displays user profile and role badges (`Admin` / `User`) in the navbar.
+  - Tailored dashboard experience based on role (Admin vs Standard User).
+- **Complaint Management (User)**:
+  - Form to raise complaints with title, category selection, and description.
+  - View personal complaints list with color-coded status badges (`open`, `in-progress`, `resolved`).
+  - Read admin resolution remarks.
+  - Edit open complaints or withdraw/delete them.
+- **Administrative Controls (Admin)**:
+  - Real-time overview of all complaints submitted across users.
+  - Inline controls to update status (`open`, `in-progress`, `resolved`) and attach remarks.
+  - Submitter details display (name and email).
+- **Search & Filters**:
+  - Filter by status (`All`, `Open`, `In Progress`, `Resolved`).
+  - Filter by category (`Technical`, `Billing`, `Customer Service`, etc.).
+  - Real-time text search across title, description, and remarks.
+- **Stats Counter**: Live metrics cards tracking counts for Total, Open, In Progress, and Resolved complaints.
 
 ---
 
 ## Getting Started
 
-1. **Start the Express backend** (in `server/` folder):
-   ```bash
-   cd server
-   npm run dev
-   ```
-   Backend runs at `http://localhost:5000`.
-
-2. **Start the React frontend** (in `client/` folder):
+1. **Install Dependencies**:
    ```bash
    cd client
+   npm install
+   ```
+
+2. **Start Development Server**:
+   ```bash
    npm run dev
    ```
-   Open the browser URL shown by Vite (typically `http://localhost:5173`).
+   Open the browser URL shown in the terminal (typically `http://localhost:5173`).
+
+3. **Build for Production**:
+   ```bash
+   npm run build
+   ```
