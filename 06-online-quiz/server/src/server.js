@@ -1,18 +1,22 @@
 // server/src/server.js
-// Main entry point for the Express backend server
+// Main entry point for the Quiz System Express backend server
 
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import connectDB from './config/db.js';
+import { autoSeedQuizzes } from './config/seedData.js';
 import authRoutes from './routes/authRoutes.js';
-import itemRoutes from './routes/itemRoutes.js';
+import quizRoutes from './routes/quizRoutes.js';
+import scoreRoutes from './routes/scoreRoutes.js';
 
 // Load environment variables from .env file
 dotenv.config();
 
-// Connect to MongoDB
-connectDB();
+// Connect to MongoDB and run auto-seeding if collection is empty
+connectDB().then(() => {
+  autoSeedQuizzes();
+});
 
 const app = express();
 
@@ -25,11 +29,12 @@ app.use(express.urlencoded({ extended: true }));
 
 // API Routes
 app.use('/api/auth', authRoutes);
-app.use('/api/items', itemRoutes);
+app.use('/api/quizzes', quizRoutes);
+app.use('/api/scores', scoreRoutes);
 
 // Root / Health check route
 app.get('/', (req, res) => {
-  res.json({ message: 'API is running...' });
+  res.json({ message: 'Quiz System API is running...' });
 });
 
 // 404 Not Found handler for undefined routes
@@ -50,4 +55,3 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
 });
-

@@ -60,7 +60,7 @@ const Register = () => {
     <div className="auth-container">
       <div className="auth-card">
         <h2>Create an Account</h2>
-        <p className="auth-subtitle">Sign up to start organizing your items</p>
+        <p className="auth-subtitle">Sign up to start taking quizzes and testing your skills</p>
 
         {error && <div className="alert alert-error">{error}</div>}
 

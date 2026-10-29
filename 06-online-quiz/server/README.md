@@ -1,14 +1,20 @@
-# Express & MongoDB Backend
+# Quiz System - Express & MongoDB Backend
 
-A clean, modular Express backend with ES modules, Mongoose, JWT authentication, and user-scoped CRUD operations.
+Express backend with MongoDB, JWT authentication, Quiz management, and Score tracking.
 
 ## Features
 
-- **ES Modules (`import`/`export`)**: Modern JavaScript syntax.
+- **ES Modules (`import`/`export`)**: Modern JavaScript module syntax.
 - **Authentication**: JWT-based stateless authentication with password hashing via `bcryptjs`.
-- **User Scoping**: Items are tied to the authenticated user; users can only view, update, and delete their own items.
-- **MongoDB & Mongoose**: Schemas with validation, defaults, and timestamps.
-- **CORS & Environment Variables**: Configured via `cors` and `dotenv`.
+- **Quiz Management**:
+  - Pre-seeded with 2 sample quizzes (5 questions each: text, 4 options, correct answer).
+  - Anti-cheat question delivery: `correctAnswer` is stripped on quiz fetch and validated server-side.
+  - Custom quiz creation with full question, option, and answer validation.
+- **Scoring & Evaluation**:
+  - Dynamic score computation (`POST /api/quizzes/:id/submit`).
+  - Score history saved automatically to MongoDB (`Score` collection).
+  - User-scoped score history (`GET /api/scores`).
+- **Database Auto-Seeding**: Automatically seeds sample quizzes if the database is empty.
 
 ---
 
@@ -17,24 +23,27 @@ A clean, modular Express backend with ES modules, Mongoose, JWT authentication, 
 ```text
 server/
 ├── .env                  # Environment variables (PORT, MONGO_URI, JWT_SECRET)
-├── .env.example          # Example environment variable template
-├── .gitignore            # Git ignore rule for node_modules and .env
 ├── package.json          # Node dependencies and scripts
 ├── README.md             # Backend documentation
 └── src/
     ├── config/
-    │   └── db.js         # MongoDB connection setup
+    │   ├── db.js         # MongoDB connection setup
+    │   └── seedData.js   # 2 sample quizzes and auto-seed logic
     ├── controllers/
     │   ├── authController.js  # Registration and login logic
-    │   └── itemController.js  # User-scoped Item CRUD logic
+    │   ├── quizController.js  # Quiz CRUD and answer scoring
+    │   └── scoreController.js # User score history logic
     ├── middleware/
     │   └── auth.js       # JWT verification middleware
     ├── models/
-    │   ├── Item.js       # Generic Item schema & model
+    │   ├── Quiz.js       # Quiz model with questions & 4 options
+    │   ├── Score.js      # User quiz attempt & score record model
     │   └── User.js       # User schema & model
     ├── routes/
     │   ├── authRoutes.js # Routes for /api/auth
-    │   └── itemRoutes.js # Protected routes for /api/items
+    │   ├── quizRoutes.js # Routes for /api/quizzes
+    │   └── scoreRoutes.js# Routes for /api/scores
+    ├── seed.js           # Manual seed script
     └── server.js         # Express app initialization and server entry point
 ```
 
@@ -49,15 +58,20 @@ server/
    ```
 
 2. **Configure `.env`**:
-   Ensure `server/.env` is configured (or copy from `.env.example`):
+   Ensure `server/.env` is configured:
    ```env
    PORT=5000
-   MONGO_URI=mongodb://localhost:27017/webdev_db
-   JWT_SECRET=your_jwt_secret_key_change_in_production
+   MONGO_URI=mongodb+srv://<user>:<password>@cluster0.mongodb.net/online_quiz?retryWrites=true&w=majority
+   JWT_SECRET=your_jwt_secret_key
    ```
 
-3. **Run the server**:
-   - Development mode (with auto-reload):
+3. **Seed Quizzes (Optional)**:
+   ```bash
+   npm run seed
+   ```
+
+4. **Run the server**:
+   - Development mode:
      ```bash
      npm run dev
      ```
@@ -70,95 +84,28 @@ server/
 
 ## API Endpoints
 
-### 1. Authentication Routes (`/api/auth`)
+### 1. Authentication (`/api/auth`)
 
 | Method | Endpoint | Description | Auth Required |
 | :--- | :--- | :--- | :--- |
 | `POST` | `/api/auth/register` | Register a new user | No |
 | `POST` | `/api/auth/login` | Log in and receive JWT | No |
 
-#### Example: Register User (`POST /api/auth/register`)
-Request Body:
-```json
-{
-  "name": "Jane Doe",
-  "email": "jane@example.com",
-  "password": "password123"
-}
-```
-Response (`201 Created`):
-```json
-{
-  "message": "User registered successfully",
-  "token": "eyJhbGciOiJIUzI1NiIsIn...",
-  "user": {
-    "_id": "671df...",
-    "name": "Jane Doe",
-    "email": "jane@example.com",
-    "role": "user",
-    "createdAt": "2026-10-26T12:00:00.000Z"
-  }
-}
-```
-
-#### Example: Login (`POST /api/auth/login`)
-Request Body:
-```json
-{
-  "email": "jane@example.com",
-  "password": "password123"
-}
-```
-Response (`200 OK`):
-```json
-{
-  "message": "Login successful",
-  "token": "eyJhbGciOiJIUzI1NiIsIn...",
-  "user": {
-    "_id": "671df...",
-    "name": "Jane Doe",
-    "email": "jane@example.com",
-    "role": "user",
-    "createdAt": "2026-10-26T12:00:00.000Z"
-  }
-}
-```
-
----
-
-### 2. Item Routes (`/api/items`)
-> All item routes require the `Authorization` header: `Bearer <token>`
+### 2. Quizzes (`/api/quizzes`)
+> All quiz routes require `Authorization: Bearer <token>`
 
 | Method | Endpoint | Description | Auth Required |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/api/items` | Get all items for logged-in user | Yes |
-| `POST` | `/api/items` | Create a new item | Yes |
-| `GET` | `/api/items/:id` | Get single item by ID | Yes |
-| `PUT` | `/api/items/:id` | Update item by ID | Yes |
-| `DELETE` | `/api/items/:id` | Delete item by ID | Yes |
+| `GET` | `/api/quizzes` | Get list of all available quizzes | Yes |
+| `GET` | `/api/quizzes/:id` | Get quiz questions & options (answers omitted) | Yes |
+| `POST` | `/api/quizzes/:id/submit` | Submit answers & receive score breakdown | Yes |
+| `POST` | `/api/quizzes` | Create a new quiz | Yes |
+| `DELETE` | `/api/quizzes/:id` | Delete a quiz | Yes |
 
-#### Example: Create Item (`POST /api/items`)
-Headers:
-`Authorization: Bearer <token>`
+### 3. Scores (`/api/scores`)
+> All score routes require `Authorization: Bearer <token>`
 
-Request Body:
-```json
-{
-  "title": "Build portfolio project",
-  "description": "Create full stack MERN app",
-  "status": "pending"
-}
-```
-Response (`201 Created`):
-```json
-{
-  "_id": "671e0...",
-  "title": "Build portfolio project",
-  "description": "Create full stack MERN app",
-  "status": "pending",
-  "user": "671df...",
-  "createdAt": "2026-10-26T12:05:00.000Z",
-  "updatedAt": "2026-10-26T12:05:00.000Z"
-}
-```
-
+| Method | Endpoint | Description | Auth Required |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/scores` | Get all past scores for authenticated user | Yes |
+| `DELETE` | `/api/scores/:id` | Delete a score history record | Yes |

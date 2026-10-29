@@ -1,12 +1,13 @@
 // client/src/components/Navbar.jsx
-// Navigation bar displaying application title, user greeting, and logout button
+// Navigation bar with Quiz System brand, navigation links, and auth controls
 
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/useAuth';
 
 const Navbar = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleLogout = () => {
     logout();
@@ -17,11 +18,25 @@ const Navbar = () => {
     <nav className="navbar">
       <div className="nav-container">
         <Link to="/" className="nav-brand">
-          TaskApp
+          <span className="brand-icon">📝</span> Quiz System
         </Link>
         <div className="nav-actions">
           {user ? (
             <>
+              <div className="nav-links">
+                <Link
+                  to="/"
+                  className={`nav-link ${location.pathname === '/' ? 'active' : ''}`}
+                >
+                  Quizzes
+                </Link>
+                <Link
+                  to="/history"
+                  className={`nav-link ${location.pathname === '/history' ? 'active' : ''}`}
+                >
+                  Score History
+                </Link>
+              </div>
               <span className="nav-user">
                 Hello, <strong>{user.name}</strong>
               </span>
