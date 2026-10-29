@@ -1,6 +1,6 @@
 # React + Vite Frontend - Link Shortener
 
-A modern React frontend for the Link Shortener application built with Vite, React Router v7, and Axios.
+A React frontend for the Link Shortener application built with Vite, React Router v7, and Axios.
 
 ## Features
 
@@ -9,16 +9,10 @@ A modern React frontend for the Link Shortener application built with Vite, Reac
 - **Pages**:
   - `Login`: User authentication with validation and error alerts.
   - `Register`: New user sign-up with password verification and error alerts.
-  - `Dashboard`: Link shortener management interface scoped to the logged-in user.
-- **Link Shortener Dashboard**:
-  - URL input form to generate shortened links.
-  - Live click counter display for each shortened link.
-  - One-click "Copy" button with visual feedback.
-  - Direct redirect via clickable short URL links.
-  - Delete action to remove existing links.
-  - Summary stats for Total Links and Total Clicks.
-- **Navbar**: Displays brand title, user greeting, and logout action.
-- **Single Stylesheet (`App.css`)**: Responsive layout with modern, minimal CSS.
+  - `Dashboard`: Link shortener management interface with URL input, copy button, click metrics, and deletion.
+  - `RedirectHandler`: Public route handler for `/s/:shortCode` that redirects to destination via backend.
+- **Navbar**: Displays brand (`🔗 Link Shortener`), user greeting, and logout button.
+- **Styles (`App.css`)**: Responsive layout with modern cards, click counter badges, copy button states, and summary stats.
 
 ---
 

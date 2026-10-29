@@ -7,9 +7,9 @@ A clean, modular Express backend with ES modules, Mongoose, JWT authentication, 
 - **ES Modules (`import`/`export`)**: Modern JavaScript syntax.
 - **Authentication**: JWT-based stateless authentication with password hashing via `bcryptjs`.
 - **User Scoping**: Links are tied to the authenticated user; users can only view and delete their own links.
-- **Link Shortening**: Generates random 6-character unique alphanumeric short codes.
-- **Public Redirection & Click Tracking**: `/s/:shortCode` atomically increments click count and redirects to `originalUrl`.
-- **MongoDB & Mongoose**: Schemas with validation, defaults, and timestamps.
+- **6-Character Code Generation**: Secure, collision-resistant random alphanumeric string generation (`[a-zA-Z0-9]`).
+- **Public Redirection (`/s/:shortCode`)**: Directs traffic to the destination URL while atomically incrementing clicks.
+- **MongoDB & Mongoose**: `Link` and `User` schemas with validation, defaults, and timestamps.
 - **CORS & Environment Variables**: Configured via `cors` and `dotenv`.
 
 ---
@@ -28,7 +28,7 @@ server/
     │   └── db.js         # MongoDB connection setup
     ├── controllers/
     │   ├── authController.js  # Registration and login logic
-    │   └── linkController.js  # Link creation, listing, deletion, redirect logic
+    │   └── linkController.js  # Link CRUD & public redirect logic
     ├── middleware/
     │   └── auth.js       # JWT verification middleware
     ├── models/
@@ -37,7 +37,7 @@ server/
     ├── routes/
     │   ├── authRoutes.js # Routes for /api/auth
     │   └── linkRoutes.js # Protected routes for /api/links
-    └── server.js         # Express app initialization and server entry point
+    └── server.js         # Express app initialization, /s/:shortCode redirect, and server entry point
 ```
 
 ---
@@ -79,45 +79,16 @@ server/
 | `POST` | `/api/auth/register` | Register a new user | No |
 | `POST` | `/api/auth/login` | Log in and receive JWT | No |
 
----
-
-### 2. Protected Link Routes (`/api/links`)
-> All link routes require the `Authorization` header: `Bearer <token>`
+### 2. Public Redirection Route
 
 | Method | Endpoint | Description | Auth Required |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/api/links` | Get all links for logged-in user | Yes |
-| `POST` | `/api/links` | Create a new shortened link (`originalUrl`) | Yes |
-| `DELETE` | `/api/links/:id` | Delete link by ID | Yes |
+| `GET` | `/s/:shortCode` | Redirect to original URL and increment `clicks` | No |
 
-#### Example: Create Link (`POST /api/links`)
-Headers:
-`Authorization: Bearer <token>`
-
-Request Body:
-```json
-{
-  "originalUrl": "https://developer.mozilla.org/en-US/docs/Web/JavaScript"
-}
-```
-
-Response (`201 Created`):
-```json
-{
-  "_id": "671e0...",
-  "originalUrl": "https://developer.mozilla.org/en-US/docs/Web/JavaScript",
-  "shortCode": "aB3dE9",
-  "clicks": 0,
-  "user": "671df...",
-  "createdAt": "2026-10-28T12:05:00.000Z",
-  "updatedAt": "2026-10-28T12:05:00.000Z"
-}
-```
-
----
-
-### 3. Public Short Link Redirect Route (`/s/:shortCode`)
+### 3. Link Management Routes (`/api/links`)
 
 | Method | Endpoint | Description | Auth Required |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/s/:shortCode` | Increments link clicks and redirects to original URL | No (Public) |
+| `GET` | `/api/links` | Get all links belonging to the authenticated user | Yes |
+| `POST` | `/api/links` | Create a new shortened link (`{ originalUrl }`) | Yes |
+| `DELETE` | `/api/links/:id` | Delete a specific link owned by the user | Yes |

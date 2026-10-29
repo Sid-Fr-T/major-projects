@@ -23,7 +23,7 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
 
-          {/* Public short link redirect handler if opened on client port */}
+          {/* Public route redirect handler */}
           <Route path="/s/:shortCode" element={<RedirectHandler />} />
 
           {/* Protected routes: accessible only to logged-in users */}

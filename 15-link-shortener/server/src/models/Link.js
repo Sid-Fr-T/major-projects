@@ -1,5 +1,5 @@
 // server/src/models/Link.js
-// Defines the Link schema and model for shortened URLs
+// Defines the Link schema with original URL, random 6-character shortCode, click counter, and user reference
 
 import mongoose from 'mongoose';
 
@@ -15,16 +15,18 @@ const linkSchema = new mongoose.Schema(
       required: [true, 'Short code is required'],
       unique: true,
       trim: true,
-      index: true,
+      minlength: 6,
+      maxlength: 6,
     },
     clicks: {
       type: Number,
       default: 0,
+      min: 0,
     },
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      required: [true, 'Link must belong to a user'],
+      required: [true, 'User reference is required'],
     },
   },
   {

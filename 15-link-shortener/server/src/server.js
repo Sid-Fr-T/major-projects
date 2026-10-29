@@ -6,7 +6,8 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import connectDB from './config/db.js';
 import authRoutes from './routes/authRoutes.js';
-import itemRoutes from './routes/itemRoutes.js';
+import linkRoutes from './routes/linkRoutes.js';
+import { redirectLink } from './controllers/linkController.js';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -23,13 +24,16 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Public short URL redirection route: /s/:shortCode
+app.get('/s/:shortCode', redirectLink);
+
 // API Routes
 app.use('/api/auth', authRoutes);
-app.use('/api/items', itemRoutes);
+app.use('/api/links', linkRoutes);
 
 // Root / Health check route
 app.get('/', (req, res) => {
-  res.json({ message: 'API is running...' });
+  res.json({ message: 'Link Shortener API is running...' });
 });
 
 // 404 Not Found handler for undefined routes
@@ -50,4 +54,3 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
 });
-

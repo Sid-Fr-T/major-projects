@@ -1,44 +1,38 @@
 // client/src/pages/Dashboard.jsx
-// Dashboard for viewing, creating, updating, and deleting items scoped to the user
+// Dashboard for creating, listing, copying, and deleting shortened links with click tracking
 
 import { useState, useEffect } from 'react';
 import API from '../api/axios';
 
+const BACKEND_BASE_URL = (API.defaults.baseURL || 'http://localhost:5000/api').replace(/\/api\/?$/, '');
+
 const Dashboard = () => {
-  const [items, setItems] = useState([]);
+  const [links, setLinks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // State for creating a new item
-  const [newItem, setNewItem] = useState({
-    title: '',
-    description: '',
-    status: 'pending',
-  });
+  // Form input state
+  const [originalUrl, setOriginalUrl] = useState('');
   const [createLoading, setCreateLoading] = useState(false);
+  const [createError, setCreateError] = useState('');
 
-  // State for tracking which item is currently being edited
-  const [editingId, setEditingId] = useState(null);
-  const [editFormData, setEditFormData] = useState({
-    title: '',
-    description: '',
-    status: 'pending',
-  });
+  // Track copied link id for temporary visual feedback
+  const [copiedId, setCopiedId] = useState(null);
 
-  // Fetch all items belonging to the authenticated user on mount
+  // Fetch links on component mount
   useEffect(() => {
     let ignore = false;
 
-    API.get('/items')
+    API.get('/links')
       .then((res) => {
         if (!ignore) {
-          setItems(res.data);
+          setLinks(res.data);
           setError('');
         }
       })
       .catch((err) => {
         if (!ignore) {
-          setError(err.response?.data?.message || 'Failed to load items.');
+          setError(err.response?.data?.message || 'Failed to load links.');
         }
       })
       .finally(() => {
@@ -52,229 +46,201 @@ const Dashboard = () => {
     };
   }, []);
 
-  // Handle new item form input changes
-  const handleNewChange = (e) => {
-    setNewItem((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  // Manual refresh for click counts
+  const handleRefresh = async () => {
+    try {
+      const res = await API.get('/links');
+      setLinks(res.data);
+      setError('');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to refresh links.');
+    }
   };
 
-  // Submit new item
+  // Handle URL creation
   const handleCreateSubmit = async (e) => {
     e.preventDefault();
-    if (!newItem.title.trim()) return;
+    setCreateError('');
+
+    if (!originalUrl.trim()) {
+      setCreateError('Please enter a valid URL.');
+      return;
+    }
 
     setCreateLoading(true);
     try {
-      const res = await API.post('/items', newItem);
-      setItems((prev) => [res.data, ...prev]);
-      setNewItem({ title: '', description: '', status: 'pending' });
+      const res = await API.post('/links', { originalUrl });
+      setLinks((prev) => [res.data, ...prev]);
+      setOriginalUrl('');
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to create item.');
+      setCreateError(err.response?.data?.message || 'Failed to shorten URL.');
     } finally {
       setCreateLoading(false);
     }
   };
 
-  // Enable edit mode for a specific card
-  const startEdit = (item) => {
-    setEditingId(item._id);
-    setEditFormData({
-      title: item.title,
-      description: item.description || '',
-      status: item.status || 'pending',
-    });
-  };
-
-  // Cancel edit mode
-  const cancelEdit = () => {
-    setEditingId(null);
-    setEditFormData({ title: '', description: '', status: 'pending' });
-  };
-
-  // Save updated item
-  const handleUpdateSubmit = async (id) => {
-    if (!editFormData.title.trim()) return;
-
-    try {
-      const res = await API.put(`/items/${id}`, editFormData);
-      setItems((prev) =>
-        prev.map((item) => (item._id === id ? res.data : item))
-      );
-      setEditingId(null);
-    } catch (err) {
-      alert(err.response?.data?.message || 'Failed to update item.');
-    }
-  };
-
-  // Delete an item
+  // Handle deleting a link
   const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this item?')) return;
+    if (!window.confirm('Are you sure you want to delete this short link?')) return;
 
     try {
-      await API.delete(`/items/${id}`);
-      setItems((prev) => prev.filter((item) => item._id !== id));
+      await API.delete(`/links/${id}`);
+      setLinks((prev) => prev.filter((link) => link._id !== id));
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to delete item.');
+      alert(err.response?.data?.message || 'Failed to delete link.');
     }
   };
+
+  // Copy short link to clipboard
+  const handleCopy = (link) => {
+    const fullShortUrl = `${BACKEND_BASE_URL}/s/${link.shortCode}`;
+    navigator.clipboard
+      .writeText(fullShortUrl)
+      .then(() => {
+        setCopiedId(link._id);
+        setTimeout(() => {
+          setCopiedId(null);
+        }, 2000);
+      })
+      .catch(() => {
+        alert(`Could not copy link automatically. Here is the URL: ${fullShortUrl}`);
+      });
+  };
+
+  // Calculate total clicks across all links
+  const totalClicks = links.reduce((sum, link) => sum + (link.clicks || 0), 0);
 
   return (
     <div className="dashboard-container">
-      {/* Top Creation Card */}
+      {/* Top Creation Section */}
       <section className="create-section">
-        <h2>Add New Item</h2>
+        <h2>Shorten a New Link</h2>
+        <p className="section-subtitle">
+          Enter any long URL to generate a compact, 6-character short link.
+        </p>
+
+        {createError && <div className="alert alert-error">{createError}</div>}
+
         <form onSubmit={handleCreateSubmit} className="create-form">
           <div className="form-row">
             <input
               type="text"
-              name="title"
-              value={newItem.title}
-              onChange={handleNewChange}
-              placeholder="Item title *"
+              name="originalUrl"
+              value={originalUrl}
+              onChange={(e) => {
+                setOriginalUrl(e.target.value);
+                if (createError) setCreateError('');
+              }}
+              placeholder="Paste long URL (e.g. https://example.com/very/long/path)..."
               required
-              className="input-title"
+              className="input-title url-input"
             />
-            <select
-              name="status"
-              value={newItem.status}
-              onChange={handleNewChange}
-              className="select-status"
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={createLoading}
             >
-              <option value="pending">Pending</option>
-              <option value="in-progress">In Progress</option>
-              <option value="done">Done</option>
-            </select>
+              {createLoading ? 'Shortening...' : 'Shorten URL'}
+            </button>
           </div>
-          <textarea
-            name="description"
-            value={newItem.description}
-            onChange={handleNewChange}
-            placeholder="Item description (optional)"
-            rows="2"
-            className="input-desc"
-          ></textarea>
-          <button
-            type="submit"
-            className="btn btn-primary"
-            disabled={createLoading}
-          >
-            {createLoading ? 'Adding...' : 'Add Item'}
-          </button>
         </form>
       </section>
 
-      {/* Items Section */}
+      {/* Stats Summary Bar */}
+      <div className="stats-bar">
+        <div className="stat-card">
+          <span className="stat-label">Total Links</span>
+          <span className="stat-value">{links.length}</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-label">Total Clicks</span>
+          <span className="stat-value">{totalClicks}</span>
+        </div>
+        <button
+          type="button"
+          onClick={handleRefresh}
+          className="btn btn-secondary-sm refresh-btn"
+          title="Refresh click counts"
+        >
+          🔄 Refresh Counts
+        </button>
+      </div>
+
+      {/* Links List Section */}
       <section className="items-section">
         <div className="items-header">
-          <h2>Your Items</h2>
-          <span className="items-count">({items.length})</span>
+          <h2>Your Shortened Links</h2>
+          <span className="items-count">({links.length})</span>
         </div>
 
         {error && <div className="alert alert-error">{error}</div>}
 
         {loading ? (
-          <div className="loading-state">Loading items...</div>
-        ) : items.length === 0 ? (
+          <div className="loading-state">Loading your links...</div>
+        ) : links.length === 0 ? (
           <div className="empty-state">
-            <p>No items yet. Create your first item above!</p>
+            <p>No shortened links yet. Paste a long URL above to create your first short link!</p>
           </div>
         ) : (
           <div className="card-grid">
-            {items.map((item) => {
-              const isEditing = editingId === item._id;
+            {links.map((link) => {
+              const fullShortUrl = `${BACKEND_BASE_URL}/s/${link.shortCode}`;
+              const isCopied = copiedId === link._id;
 
               return (
-                <div key={item._id} className="item-card">
-                  {isEditing ? (
-                    // Card in Edit Mode
-                    <div className="card-edit-mode">
-                      <input
-                        type="text"
-                        value={editFormData.title}
-                        onChange={(e) =>
-                          setEditFormData((prev) => ({
-                            ...prev,
-                            title: e.target.value,
-                          }))
-                        }
-                        className="edit-input"
-                        placeholder="Title"
-                      />
-                      <textarea
-                        value={editFormData.description}
-                        onChange={(e) =>
-                          setEditFormData((prev) => ({
-                            ...prev,
-                            description: e.target.value,
-                          }))
-                        }
-                        className="edit-textarea"
-                        rows="3"
-                        placeholder="Description"
-                      />
-                      <select
-                        value={editFormData.status}
-                        onChange={(e) =>
-                          setEditFormData((prev) => ({
-                            ...prev,
-                            status: e.target.value,
-                          }))
-                        }
-                        className="edit-select"
+                <div key={link._id} className="item-card link-card">
+                  <div className="card-header link-card-header">
+                    <div className="short-url-group">
+                      <a
+                        href={fullShortUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="short-link-anchor"
                       >
-                        <option value="pending">Pending</option>
-                        <option value="in-progress">In Progress</option>
-                        <option value="done">Done</option>
-                      </select>
-                      <div className="card-actions">
-                        <button
-                          onClick={() => handleUpdateSubmit(item._id)}
-                          className="btn btn-success-sm"
-                        >
-                          Save
-                        </button>
-                        <button
-                          onClick={cancelEdit}
-                          className="btn btn-secondary-sm"
-                        >
-                          Cancel
-                        </button>
-                      </div>
+                        {fullShortUrl}
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => handleCopy(link)}
+                        className={`btn-copy ${isCopied ? 'copied' : ''}`}
+                        title="Copy to clipboard"
+                      >
+                        {isCopied ? '✓ Copied' : '📋 Copy'}
+                      </button>
                     </div>
-                  ) : (
-                    // Card in View Mode
-                    <>
-                      <div className="card-header">
-                        <h3 className="card-title">{item.title}</h3>
-                        <span
-                          className={`status-badge status-${item.status || 'pending'}`}
-                        >
-                          {item.status || 'pending'}
-                        </span>
-                      </div>
-                      <p className="card-description">
-                        {item.description || 'No description provided.'}
-                      </p>
-                      <div className="card-footer">
-                        <span className="card-date">
-                          {new Date(item.createdAt).toLocaleDateString()}
-                        </span>
-                        <div className="card-actions">
-                          <button
-                            onClick={() => startEdit(item)}
-                            className="btn btn-secondary-sm"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDelete(item._id)}
-                            className="btn btn-danger-sm"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </div>
-                    </>
-                  )}
+                    <span className="click-badge" title="Total times this link was clicked">
+                      🎯 {link.clicks || 0} {link.clicks === 1 ? 'click' : 'clicks'}
+                    </span>
+                  </div>
+
+                  <div className="original-url-group">
+                    <span className="original-url-label">Original:</span>
+                    <a
+                      href={link.originalUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="original-link-anchor"
+                      title={link.originalUrl}
+                    >
+                      {link.originalUrl}
+                    </a>
+                  </div>
+
+                  <div className="card-footer">
+                    <span className="card-date">
+                      Created: {new Date(link.createdAt).toLocaleDateString()}
+                    </span>
+                    <div className="card-actions">
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(link._id)}
+                        className="btn btn-danger-sm"
+                        title="Delete link"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
                 </div>
               );
             })}
@@ -286,4 +252,3 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
-

@@ -1,5 +1,5 @@
 // client/src/pages/RedirectHandler.jsx
-// Handles redirecting frontend /s/:shortCode visits to the backend redirect endpoint
+// Handles client-side /s/:shortCode requests and forwards to backend redirect route
 
 import { useEffect } from 'react';
 import { useParams } from 'react-router-dom';
@@ -8,14 +8,17 @@ const RedirectHandler = () => {
   const { shortCode } = useParams();
 
   useEffect(() => {
-    const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
-    window.location.href = `${backendUrl}/s/${shortCode}`;
+    if (shortCode) {
+      window.location.href = `http://localhost:5000/s/${shortCode}`;
+    }
   }, [shortCode]);
 
   return (
-    <div style={{ textAlign: 'center', padding: '60px 20px', color: '#64748b' }}>
-      <h2>Redirecting...</h2>
-      <p>Taking you to your destination...</p>
+    <div className="auth-container">
+      <div className="auth-card" style={{ textAlign: 'center' }}>
+        <h2>Redirecting...</h2>
+        <p className="auth-subtitle">Taking you to your destination URL...</p>
+      </div>
     </div>
   );
 };
