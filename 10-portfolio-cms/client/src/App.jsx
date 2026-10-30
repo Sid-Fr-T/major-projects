@@ -1,9 +1,10 @@
 // client/src/App.jsx
-// Main application layout with route configuration and protected routes
+// Main application layout with route configuration for public portfolio and admin CMS
 
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import ProtectedRoute from './components/ProtectedRoute';
+import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
@@ -18,21 +19,27 @@ function App() {
       {/* Main page content area */}
       <main>
         <Routes>
+          {/* Public Portfolio Showcase */}
+          <Route path="/" element={<Home />} />
+
           {/* Public authentication routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
 
-          {/* Protected routes: accessible only to logged-in users */}
+          {/* Protected Admin CMS Panel: accessible only to users with role "admin" */}
           <Route
-            path="/"
+            path="/admin"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute adminOnly={true}>
                 <Dashboard />
               </ProtectedRoute>
             }
           />
 
-          {/* Catch-all redirect to dashboard (or login if unauthenticated) */}
+          {/* Alias /dashboard route redirecting to /admin */}
+          <Route path="/dashboard" element={<Navigate to="/admin" replace />} />
+
+          {/* Catch-all redirect to public portfolio */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

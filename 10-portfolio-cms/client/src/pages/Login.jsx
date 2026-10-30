@@ -1,5 +1,5 @@
 // client/src/pages/Login.jsx
-// User login form with error messaging and navigation
+// User login form with role-based redirection, error messaging, and navigation
 
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -10,15 +10,24 @@ const Login = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const { login, token } = useAuth();
+  const { login, token, user } = useAuth();
   const navigate = useNavigate();
 
-  // If already logged in, redirect to dashboard
+  // Update page title
   useEffect(() => {
-    if (token) {
-      navigate('/');
+    document.title = 'Portfolio CMS | Login';
+  }, []);
+
+  // If already logged in, redirect based on role
+  useEffect(() => {
+    if (token && user) {
+      if (user.role === 'admin') {
+        navigate('/admin');
+      } else {
+        navigate('/');
+      }
     }
-  }, [token, navigate]);
+  }, [token, user, navigate]);
 
   const handleChange = (e) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -30,14 +39,18 @@ const Login = () => {
     setError('');
 
     if (!formData.email || !formData.password) {
-      setError('Please fill in all fields.');
+      setError('Please fill in both email and password.');
       return;
     }
 
     setLoading(true);
     try {
-      await login(formData.email, formData.password);
-      navigate('/');
+      const data = await login(formData.email, formData.password);
+      if (data.user?.role === 'admin') {
+        navigate('/admin');
+      } else {
+        navigate('/');
+      }
     } catch (err) {
       const message =
         err.response?.data?.message || 'Login failed. Please check your credentials.';
@@ -51,9 +64,13 @@ const Login = () => {
     <div className="auth-container">
       <div className="auth-card">
         <h2>Welcome Back</h2>
-        <p className="auth-subtitle">Log in to manage your items</p>
+        <p className="auth-subtitle">Log in with your credentials to access the CMS</p>
 
         {error && <div className="alert alert-error">{error}</div>}
+
+        <div className="auth-note">
+          <strong>Note:</strong> Only accounts registered with the <strong>Admin</strong> role can access the CMS editing panel. Standard users will be redirected to the public portfolio.
+        </div>
 
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="form-group">

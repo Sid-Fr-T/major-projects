@@ -1,32 +1,31 @@
-# React + Vite Frontend
+# Portfolio CMS - React + Vite Frontend
 
-A React frontend for the Item Management application built with Vite, React Router v7, and Axios.
+A responsive React frontend for the Portfolio CMS built with Vite, React Router v7, and Axios.
 
 ## Features
 
-- **AuthContext**: Persists user data and JWT token to `localStorage`, providing `login`, `register`, and `logout` actions.
-- **Protected Routes**: Redirects unauthenticated users to `/login`.
-- **Pages**:
-  - `Login`: User authentication with validation and error alerts.
-  - `Register`: New user sign-up with password verification and error alerts.
-  - `Dashboard`: Full CRUD interface for items (title, description, status) scoped to the logged-in user.
-- **Navbar**: Displays the logged-in user's name and provides a quick logout button.
-- **Single Stylesheet (`App.css`)**: Responsive layout with modern CSS Grid card design and status badges (`pending`, `in-progress`, `done`).
+- **Public Portfolio Page (`/`)**: Displays developer about bio, skills badges, and project showcase cards with image URLs.
+- **Admin CMS Dashboard (`/admin`)**: Restricted editing panel for admins to edit about text, skills, and full CRUD for projects.
+- **Role-Aware Auth**: Role choice (Admin / User) on registration with automated redirection.
+- **Protected Routes**: Restricts access to `/admin` strictly to users with role `admin`.
+- **Image URL Support**: Direct image URL preview and rendering without file uploads.
+- **Clean Stylesheet (`App.css`)**: Minimal, responsive layout with CSS variables and grid.
 
 ---
 
-## Getting Started
+## Setup & Running
 
-1. **Start the Express backend** (in `server/` folder):
+1. **Install dependencies**:
    ```bash
-   cd server
+   npm install
+   ```
+
+2. **Start Vite development server**:
+   ```bash
    npm run dev
    ```
-   Backend runs at `http://localhost:5000`.
 
-2. **Start the React frontend** (in `client/` folder):
+3. **Build for production**:
    ```bash
-   cd client
-   npm run dev
+   npm run build
    ```
-   Open the browser URL shown by Vite (typically `http://localhost:5173`).

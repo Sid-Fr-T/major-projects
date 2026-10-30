@@ -31,9 +31,9 @@ export const AuthProvider = ({ children }) => {
     return res.data;
   };
 
-  // Register handler
-  const register = async (name, email, password) => {
-    const res = await API.post('/auth/register', { name, email, password });
+  // Register handler with role support
+  const register = async (name, email, password, role = 'user') => {
+    const res = await API.post('/auth/register', { name, email, password, role });
     const { token: receivedToken, user: receivedUser } = res.data;
 
     // Save token and user info to state and localStorage
@@ -61,4 +61,3 @@ export const AuthProvider = ({ children }) => {
 };
 
 export default AuthProvider;
-
