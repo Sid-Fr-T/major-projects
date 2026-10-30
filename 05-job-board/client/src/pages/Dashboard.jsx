@@ -1,289 +1,582 @@
 // client/src/pages/Dashboard.jsx
-// Dashboard for viewing, creating, updating, and deleting items scoped to the user
+// Role-based Dashboard:
+// - Recruiters: Create, edit, and delete job postings; view applicant list per job
+// - Applicants: Browse all open job listings and apply once per job
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import API from '../api/axios';
+import { useAuth } from '../context/useAuth';
 
 const Dashboard = () => {
-  const [items, setItems] = useState([]);
+  const { user } = useAuth();
+  const isRecruiter = user?.role === 'recruiter';
+
+  // Job listings & page state
+  const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
 
-  // State for creating a new item
-  const [newItem, setNewItem] = useState({
+  // Search/filter for applicants
+  const [searchTerm, setSearchTerm] = useState('');
+
+  // Recruiter: New Job Form State
+  const [newJob, setNewJob] = useState({
     title: '',
+    company: '',
+    location: '',
+    salary: '',
     description: '',
-    status: 'pending',
   });
   const [createLoading, setCreateLoading] = useState(false);
 
-  // State for tracking which item is currently being edited
+  // Recruiter: Edit Job State
   const [editingId, setEditingId] = useState(null);
   const [editFormData, setEditFormData] = useState({
     title: '',
+    company: '',
+    location: '',
+    salary: '',
     description: '',
-    status: 'pending',
   });
 
-  // Fetch all items belonging to the authenticated user on mount
-  useEffect(() => {
-    let ignore = false;
+  // Recruiter: Toggle expanded applicants view for a job
+  const [expandedApplicantsJobId, setExpandedApplicantsJobId] = useState(null);
 
-    API.get('/items')
-      .then((res) => {
-        if (!ignore) {
-          setItems(res.data);
-          setError('');
-        }
-      })
-      .catch((err) => {
-        if (!ignore) {
-          setError(err.response?.data?.message || 'Failed to load items.');
-        }
-      })
-      .finally(() => {
-        if (!ignore) {
-          setLoading(false);
-        }
-      });
+  // Applicant: Tracking application in-flight
+  const [applyingId, setApplyingId] = useState(null);
 
-    return () => {
-      ignore = true;
-    };
-  }, []);
-
-  // Handle new item form input changes
-  const handleNewChange = (e) => {
-    setNewItem((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  // Fetch jobs based on user role
+  const fetchJobs = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      // Recruiters fetch their own jobs by default; applicants fetch all jobs
+      const endpoint = isRecruiter ? '/jobs/my' : '/jobs';
+      const res = await API.get(endpoint);
+      setJobs(res.data);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to load jobs.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Submit new item
-  const handleCreateSubmit = async (e) => {
+  useEffect(() => {
+    fetchJobs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isRecruiter]);
+
+  // Handle new job form change
+  const handleNewChange = (e) => {
+    setNewJob((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  // Recruiter: Submit new job posting
+  const handleCreateJob = async (e) => {
     e.preventDefault();
-    if (!newItem.title.trim()) return;
+    if (!newJob.title.trim() || !newJob.company.trim() || !newJob.location.trim() || !newJob.description.trim()) {
+      alert('Please fill in title, company, location, and description.');
+      return;
+    }
 
     setCreateLoading(true);
+    setError('');
     try {
-      const res = await API.post('/items', newItem);
-      setItems((prev) => [res.data, ...prev]);
-      setNewItem({ title: '', description: '', status: 'pending' });
+      const res = await API.post('/jobs', newJob);
+      setJobs((prev) => [res.data, ...prev]);
+      setNewJob({
+        title: '',
+        company: '',
+        location: '',
+        salary: '',
+        description: '',
+      });
+      setSuccessMsg('Job posting created successfully!');
+      setTimeout(() => setSuccessMsg(''), 4000);
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to create item.');
+      alert(err.response?.data?.message || 'Failed to create job posting.');
     } finally {
       setCreateLoading(false);
     }
   };
 
-  // Enable edit mode for a specific card
-  const startEdit = (item) => {
-    setEditingId(item._id);
+  // Recruiter: Start editing a job
+  const startEdit = (job) => {
+    setEditingId(job._id);
     setEditFormData({
-      title: item.title,
-      description: item.description || '',
-      status: item.status || 'pending',
+      title: job.title,
+      company: job.company,
+      location: job.location,
+      salary: job.salary || '',
+      description: job.description || '',
     });
   };
 
-  // Cancel edit mode
+  // Recruiter: Cancel edit
   const cancelEdit = () => {
     setEditingId(null);
-    setEditFormData({ title: '', description: '', status: 'pending' });
   };
 
-  // Save updated item
-  const handleUpdateSubmit = async (id) => {
-    if (!editFormData.title.trim()) return;
+  // Recruiter: Save updated job
+  const handleUpdateJob = async (id) => {
+    if (!editFormData.title.trim() || !editFormData.company.trim() || !editFormData.location.trim() || !editFormData.description.trim()) {
+      alert('Please fill in title, company, location, and description.');
+      return;
+    }
 
     try {
-      const res = await API.put(`/items/${id}`, editFormData);
-      setItems((prev) =>
-        prev.map((item) => (item._id === id ? res.data : item))
-      );
+      const res = await API.put(`/jobs/${id}`, editFormData);
+      setJobs((prev) => prev.map((j) => (j._id === id ? res.data : j)));
       setEditingId(null);
+      setSuccessMsg('Job posting updated successfully!');
+      setTimeout(() => setSuccessMsg(''), 4000);
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to update item.');
+      alert(err.response?.data?.message || 'Failed to update job posting.');
     }
   };
 
-  // Delete an item
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this item?')) return;
+  // Recruiter: Delete a job
+  const handleDeleteJob = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this job posting? This cannot be undone.')) {
+      return;
+    }
 
     try {
-      await API.delete(`/items/${id}`);
-      setItems((prev) => prev.filter((item) => item._id !== id));
+      await API.delete(`/jobs/${id}`);
+      setJobs((prev) => prev.filter((j) => j._id !== id));
+      if (expandedApplicantsJobId === id) {
+        setExpandedApplicantsJobId(null);
+      }
+      setSuccessMsg('Job posting deleted successfully.');
+      setTimeout(() => setSuccessMsg(''), 4000);
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to delete item.');
+      alert(err.response?.data?.message || 'Failed to delete job posting.');
     }
   };
+
+  // Recruiter: Toggle view applicants
+  const toggleApplicants = (jobId) => {
+    setExpandedApplicantsJobId((prev) => (prev === jobId ? null : jobId));
+  };
+
+  // Applicant: Apply to a job
+  const handleApply = async (jobId) => {
+    setApplyingId(jobId);
+    try {
+      const res = await API.post(`/jobs/${jobId}/apply`);
+      setJobs((prev) =>
+        prev.map((job) =>
+          job._id === jobId
+            ? { ...job, hasApplied: true, applicantCount: (job.applicantCount || 0) + 1 }
+            : job
+        )
+      );
+      setSuccessMsg(res.data.message || 'Application submitted successfully!');
+      setTimeout(() => setSuccessMsg(''), 4000);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to apply for job.');
+    } finally {
+      setApplyingId(null);
+    }
+  };
+
+  // Filtered jobs for applicants
+  const displayedJobs = useMemo(() => {
+    if (!searchTerm.trim()) return jobs;
+    const term = searchTerm.toLowerCase();
+    return jobs.filter(
+      (j) =>
+        j.title?.toLowerCase().includes(term) ||
+        j.company?.toLowerCase().includes(term) ||
+        j.location?.toLowerCase().includes(term) ||
+        j.description?.toLowerCase().includes(term)
+    );
+  }, [jobs, searchTerm]);
 
   return (
     <div className="dashboard-container">
-      {/* Top Creation Card */}
-      <section className="create-section">
-        <h2>Add New Item</h2>
-        <form onSubmit={handleCreateSubmit} className="create-form">
-          <div className="form-row">
-            <input
-              type="text"
-              name="title"
-              value={newItem.title}
-              onChange={handleNewChange}
-              placeholder="Item title *"
-              required
-              className="input-title"
-            />
-            <select
-              name="status"
-              value={newItem.status}
-              onChange={handleNewChange}
-              className="select-status"
-            >
-              <option value="pending">Pending</option>
-              <option value="in-progress">In Progress</option>
-              <option value="done">Done</option>
-            </select>
-          </div>
-          <textarea
-            name="description"
-            value={newItem.description}
-            onChange={handleNewChange}
-            placeholder="Item description (optional)"
-            rows="2"
-            className="input-desc"
-          ></textarea>
-          <button
-            type="submit"
-            className="btn btn-primary"
-            disabled={createLoading}
-          >
-            {createLoading ? 'Adding...' : 'Add Item'}
-          </button>
-        </form>
-      </section>
+      {/* Global Alerts */}
+      {error && <div className="alert alert-error">{error}</div>}
+      {successMsg && <div className="alert alert-success">{successMsg}</div>}
 
-      {/* Items Section */}
-      <section className="items-section">
-        <div className="items-header">
-          <h2>Your Items</h2>
-          <span className="items-count">({items.length})</span>
-        </div>
+      {/* ========================================================= */}
+      {/* RECRUITER VIEW                                            */}
+      {/* ========================================================= */}
+      {isRecruiter ? (
+        <>
+          {/* Post New Job Section */}
+          <section className="create-section">
+            <div className="section-title-wrap">
+              <h2>Post a New Job</h2>
+              <p className="section-subtitle">Reach qualified candidates by listing your open position</p>
+            </div>
 
-        {error && <div className="alert alert-error">{error}</div>}
+            <form onSubmit={handleCreateJob} className="create-form">
+              <div className="form-row">
+                <div className="form-group flex-1">
+                  <label htmlFor="title">Job Title *</label>
+                  <input
+                    id="title"
+                    type="text"
+                    name="title"
+                    value={newJob.title}
+                    onChange={handleNewChange}
+                    placeholder="e.g. Senior Frontend Developer"
+                    required
+                  />
+                </div>
+                <div className="form-group flex-1">
+                  <label htmlFor="company">Company Name *</label>
+                  <input
+                    id="company"
+                    type="text"
+                    name="company"
+                    value={newJob.company}
+                    onChange={handleNewChange}
+                    placeholder="e.g. Stripe, Airbnb"
+                    required
+                  />
+                </div>
+              </div>
 
-        {loading ? (
-          <div className="loading-state">Loading items...</div>
-        ) : items.length === 0 ? (
-          <div className="empty-state">
-            <p>No items yet. Create your first item above!</p>
-          </div>
-        ) : (
-          <div className="card-grid">
-            {items.map((item) => {
-              const isEditing = editingId === item._id;
+              <div className="form-row">
+                <div className="form-group flex-1">
+                  <label htmlFor="location">Location *</label>
+                  <input
+                    id="location"
+                    type="text"
+                    name="location"
+                    value={newJob.location}
+                    onChange={handleNewChange}
+                    placeholder="e.g. Remote, San Francisco, CA"
+                    required
+                  />
+                </div>
+                <div className="form-group flex-1">
+                  <label htmlFor="salary">Salary (Optional)</label>
+                  <input
+                    id="salary"
+                    type="text"
+                    name="salary"
+                    value={newJob.salary}
+                    onChange={handleNewChange}
+                    placeholder="e.g. $120,000 - $150,000 / year"
+                  />
+                </div>
+              </div>
 
-              return (
-                <div key={item._id} className="item-card">
-                  {isEditing ? (
-                    // Card in Edit Mode
-                    <div className="card-edit-mode">
-                      <input
-                        type="text"
-                        value={editFormData.title}
-                        onChange={(e) =>
-                          setEditFormData((prev) => ({
-                            ...prev,
-                            title: e.target.value,
-                          }))
-                        }
-                        className="edit-input"
-                        placeholder="Title"
-                      />
-                      <textarea
-                        value={editFormData.description}
-                        onChange={(e) =>
-                          setEditFormData((prev) => ({
-                            ...prev,
-                            description: e.target.value,
-                          }))
-                        }
-                        className="edit-textarea"
-                        rows="3"
-                        placeholder="Description"
-                      />
-                      <select
-                        value={editFormData.status}
-                        onChange={(e) =>
-                          setEditFormData((prev) => ({
-                            ...prev,
-                            status: e.target.value,
-                          }))
-                        }
-                        className="edit-select"
-                      >
-                        <option value="pending">Pending</option>
-                        <option value="in-progress">In Progress</option>
-                        <option value="done">Done</option>
-                      </select>
-                      <div className="card-actions">
-                        <button
-                          onClick={() => handleUpdateSubmit(item._id)}
-                          className="btn btn-success-sm"
-                        >
-                          Save
-                        </button>
-                        <button
-                          onClick={cancelEdit}
-                          className="btn btn-secondary-sm"
-                        >
-                          Cancel
-                        </button>
-                      </div>
+              <div className="form-group">
+                <label htmlFor="description">Job Description *</label>
+                <textarea
+                  id="description"
+                  name="description"
+                  value={newJob.description}
+                  onChange={handleNewChange}
+                  placeholder="Describe key responsibilities, qualifications, and perks..."
+                  rows="4"
+                  required
+                />
+              </div>
+
+              <div>
+                <button type="submit" className="btn btn-primary" disabled={createLoading}>
+                  {createLoading ? 'Publishing...' : '+ Publish Job Posting'}
+                </button>
+              </div>
+            </form>
+          </section>
+
+          {/* Recruiter's Job Postings */}
+          <section className="items-section">
+            <div className="items-header">
+              <h2>Your Job Postings</h2>
+              <span className="items-count">({jobs.length})</span>
+            </div>
+
+            {loading ? (
+              <div className="loading-state">Loading your job postings...</div>
+            ) : jobs.length === 0 ? (
+              <div className="empty-state">
+                <p>You haven't posted any jobs yet. Create your first listing using the form above!</p>
+              </div>
+            ) : (
+              <div className="job-list">
+                {jobs.map((job) => {
+                  const isEditing = editingId === job._id;
+                  const isApplicantsOpen = expandedApplicantsJobId === job._id;
+                  const applicantList = job.applicants || [];
+
+                  return (
+                    <div key={job._id} className="job-card recruiter-card">
+                      {isEditing ? (
+                        // Edit Mode
+                        <div className="card-edit-mode">
+                          <h3>Edit Job Posting</h3>
+                          <div className="form-row">
+                            <div className="form-group flex-1">
+                              <label>Job Title</label>
+                              <input
+                                type="text"
+                                value={editFormData.title}
+                                onChange={(e) =>
+                                  setEditFormData((prev) => ({ ...prev, title: e.target.value }))
+                                }
+                                required
+                              />
+                            </div>
+                            <div className="form-group flex-1">
+                              <label>Company</label>
+                              <input
+                                type="text"
+                                value={editFormData.company}
+                                onChange={(e) =>
+                                  setEditFormData((prev) => ({ ...prev, company: e.target.value }))
+                                }
+                                required
+                              />
+                            </div>
+                          </div>
+                          <div className="form-row">
+                            <div className="form-group flex-1">
+                              <label>Location</label>
+                              <input
+                                type="text"
+                                value={editFormData.location}
+                                onChange={(e) =>
+                                  setEditFormData((prev) => ({ ...prev, location: e.target.value }))
+                                }
+                                required
+                              />
+                            </div>
+                            <div className="form-group flex-1">
+                              <label>Salary</label>
+                              <input
+                                type="text"
+                                value={editFormData.salary}
+                                onChange={(e) =>
+                                  setEditFormData((prev) => ({ ...prev, salary: e.target.value }))
+                                }
+                              />
+                            </div>
+                          </div>
+                          <div className="form-group">
+                            <label>Description</label>
+                            <textarea
+                              value={editFormData.description}
+                              onChange={(e) =>
+                                setEditFormData((prev) => ({ ...prev, description: e.target.value }))
+                              }
+                              rows="4"
+                              required
+                            />
+                          </div>
+                          <div className="card-actions">
+                            <button
+                              onClick={() => handleUpdateJob(job._id)}
+                              className="btn btn-success-sm"
+                            >
+                              Save Changes
+                            </button>
+                            <button onClick={cancelEdit} className="btn btn-secondary-sm">
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        // View Mode
+                        <>
+                          <div className="job-card-header">
+                            <div>
+                              <h3 className="job-title">{job.title}</h3>
+                              <div className="job-company-row">
+                                <span className="job-company">{job.company}</span>
+                                <span className="meta-dot">•</span>
+                                <span className="job-location">{job.location}</span>
+                                {job.salary && (
+                                  <>
+                                    <span className="meta-dot">•</span>
+                                    <span className="job-salary">{job.salary}</span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                            <span className="card-date">
+                              Posted {new Date(job.createdAt).toLocaleDateString()}
+                            </span>
+                          </div>
+
+                          <p className="job-description">{job.description}</p>
+
+                          <div className="job-card-footer">
+                            <button
+                              type="button"
+                              onClick={() => toggleApplicants(job._id)}
+                              className={`btn ${isApplicantsOpen ? 'btn-primary-sm' : 'btn-secondary-sm'} applicants-toggle-btn`}
+                            >
+                              Applicants ({applicantList.length})
+                              <span className="toggle-indicator">{isApplicantsOpen ? '▲' : '▼'}</span>
+                            </button>
+
+                            <div className="card-actions">
+                              <button onClick={() => startEdit(job)} className="btn btn-secondary-sm">
+                                Edit
+                              </button>
+                              <button onClick={() => handleDeleteJob(job._id)} className="btn btn-danger-sm">
+                                Delete
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Expanded Applicants Drawer */}
+                          {isApplicantsOpen && (
+                            <div className="applicants-drawer">
+                              <h4 className="applicants-drawer-title">
+                                Candidates for {job.title} ({applicantList.length})
+                              </h4>
+                              {applicantList.length === 0 ? (
+                                <p className="applicants-empty">No applicants have applied to this job yet.</p>
+                              ) : (
+                                <div className="applicants-table-wrapper">
+                                  <table className="applicants-table">
+                                    <thead>
+                                      <tr>
+                                        <th>Applicant Name</th>
+                                        <th>Email Address</th>
+                                        <th>Applied On</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {applicantList.map((app, idx) => (
+                                        <tr key={app._id || idx}>
+                                          <td className="applicant-name">{app.name}</td>
+                                          <td>
+                                            <a href={`mailto:${app.email}`} className="applicant-email">
+                                              {app.email}
+                                            </a>
+                                          </td>
+                                          <td className="applicant-date">
+                                            {new Date(app.appliedAt).toLocaleDateString()} at{' '}
+                                            {new Date(app.appliedAt).toLocaleTimeString([], {
+                                              hour: '2-digit',
+                                              minute: '2-digit',
+                                            })}
+                                          </td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </>
+                      )}
                     </div>
-                  ) : (
-                    // Card in View Mode
-                    <>
-                      <div className="card-header">
-                        <h3 className="card-title">{item.title}</h3>
-                        <span
-                          className={`status-badge status-${item.status || 'pending'}`}
-                        >
-                          {item.status || 'pending'}
-                        </span>
-                      </div>
-                      <p className="card-description">
-                        {item.description || 'No description provided.'}
-                      </p>
-                      <div className="card-footer">
-                        <span className="card-date">
-                          {new Date(item.createdAt).toLocaleDateString()}
-                        </span>
-                        <div className="card-actions">
-                          <button
-                            onClick={() => startEdit(item)}
-                            className="btn btn-secondary-sm"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDelete(item._id)}
-                            className="btn btn-danger-sm"
-                          >
-                            Delete
-                          </button>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        </>
+      ) : (
+        /* ========================================================= */
+        /* APPLICANT VIEW                                            */
+        /* ========================================================= */
+        <section className="items-section">
+          <div className="applicant-header-card">
+            <div>
+              <h2>Browse Job Openings</h2>
+              <p className="section-subtitle">Discover opportunities and apply with a single click</p>
+            </div>
+            <div className="search-wrap">
+              <input
+                type="text"
+                placeholder="Search by title, company, or location..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="search-input"
+              />
+            </div>
+          </div>
+
+          <div className="items-header">
+            <h3>Available Listings</h3>
+            <span className="items-count">({displayedJobs.length})</span>
+          </div>
+
+          {loading ? (
+            <div className="loading-state">Loading job openings...</div>
+          ) : displayedJobs.length === 0 ? (
+            <div className="empty-state">
+              <p>
+                {searchTerm
+                  ? 'No job listings match your search criteria.'
+                  : 'No open jobs available at the moment. Please check back later!'}
+              </p>
+            </div>
+          ) : (
+            <div className="job-list">
+              {displayedJobs.map((job) => {
+                const hasApplied = !!job.hasApplied;
+                const isApplyingThis = applyingId === job._id;
+
+                return (
+                  <div key={job._id} className="job-card applicant-card">
+                    <div className="job-card-header">
+                      <div>
+                        <h3 className="job-title">{job.title}</h3>
+                        <div className="job-company-row">
+                          <span className="job-company">{job.company}</span>
+                          <span className="meta-dot">•</span>
+                          <span className="job-location">{job.location}</span>
+                          {job.salary && (
+                            <>
+                              <span className="meta-dot">•</span>
+                              <span className="job-salary">{job.salary}</span>
+                            </>
+                          )}
                         </div>
                       </div>
-                    </>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </section>
+                      <span className="card-date">
+                        Posted {new Date(job.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+
+                    <p className="job-description">{job.description}</p>
+
+                    <div className="job-card-footer">
+                      <div className="applicant-meta">
+                        <span className="applicant-count-chip">
+                          {job.applicantCount || 0}{' '}
+                          {job.applicantCount === 1 ? 'applicant' : 'applicants'}
+                        </span>
+                      </div>
+
+                      <div className="card-actions">
+                        {hasApplied ? (
+                          <span className="badge-applied">✓ Applied</span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleApply(job._id)}
+                            className="btn btn-primary"
+                            disabled={isApplyingThis}
+                          >
+                            {isApplyingThis ? 'Applying...' : 'Apply Now'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      )}
     </div>
   );
 };
 
 export default Dashboard;
-

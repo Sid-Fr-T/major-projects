@@ -3,6 +3,7 @@
 
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
+import { requireRole } from './role.js';
 
 /**
  * Protect routes by verifying JWT in the Authorization header.
@@ -40,3 +41,5 @@ export const protect = async (req, res, next) => {
   }
 };
 
+export { requireRole };
+export default protect;

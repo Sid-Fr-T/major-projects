@@ -1,5 +1,5 @@
 // client/src/components/Navbar.jsx
-// Navigation bar displaying application title, user greeting, and logout button
+// Navigation bar displaying Job Board branding, user identity, role badge, and logout
 
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/useAuth';
@@ -13,18 +13,25 @@ const Navbar = () => {
     navigate('/login');
   };
 
+  const userRole = user?.role || 'applicant';
+
   return (
     <nav className="navbar">
       <div className="nav-container">
         <Link to="/" className="nav-brand">
-          TaskApp
+          Job Board
         </Link>
         <div className="nav-actions">
           {user ? (
             <>
-              <span className="nav-user">
-                Hello, <strong>{user.name}</strong>
-              </span>
+              <div className="nav-user-info">
+                <span className="nav-user">
+                  Hello, <strong>{user.name}</strong>
+                </span>
+                <span className={`role-pill role-pill-${userRole}`}>
+                  {userRole === 'recruiter' ? 'Recruiter' : 'Applicant'}
+                </span>
+              </div>
               <button onClick={handleLogout} className="btn btn-secondary">
                 Logout
               </button>

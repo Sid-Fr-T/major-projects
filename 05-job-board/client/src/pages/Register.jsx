@@ -1,5 +1,5 @@
 // client/src/pages/Register.jsx
-// User registration form with error messaging and navigation
+// User registration form with role choice (recruiter / applicant)
 
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -10,6 +10,7 @@ const Register = () => {
     name: '',
     email: '',
     password: '',
+    role: 'applicant', // default role
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -29,12 +30,16 @@ const Register = () => {
     if (error) setError('');
   };
 
+  const handleRoleSelect = (selectedRole) => {
+    setFormData((prev) => ({ ...prev, role: selectedRole }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
     if (!formData.name || !formData.email || !formData.password) {
-      setError('Please fill in all fields.');
+      setError('Please fill in all required fields.');
       return;
     }
 
@@ -45,7 +50,7 @@ const Register = () => {
 
     setLoading(true);
     try {
-      await register(formData.name, formData.email, formData.password);
+      await register(formData.name, formData.email, formData.password, formData.role);
       navigate('/');
     } catch (err) {
       const message =
@@ -60,11 +65,33 @@ const Register = () => {
     <div className="auth-container">
       <div className="auth-card">
         <h2>Create an Account</h2>
-        <p className="auth-subtitle">Sign up to start organizing your items</p>
+        <p className="auth-subtitle">Join the Job Board as an Applicant or Recruiter</p>
 
         {error && <div className="alert alert-error">{error}</div>}
 
         <form onSubmit={handleSubmit} className="auth-form">
+          <div className="form-group">
+            <label>I want to join as:</label>
+            <div className="role-selector">
+              <button
+                type="button"
+                className={`role-option-btn ${formData.role === 'applicant' ? 'active' : ''}`}
+                onClick={() => handleRoleSelect('applicant')}
+              >
+                <span className="role-option-title">Applicant</span>
+                <span className="role-option-desc">Browse jobs & apply</span>
+              </button>
+              <button
+                type="button"
+                className={`role-option-btn ${formData.role === 'recruiter' ? 'active' : ''}`}
+                onClick={() => handleRoleSelect('recruiter')}
+              >
+                <span className="role-option-title">Recruiter</span>
+                <span className="role-option-desc">Post jobs & hire</span>
+              </button>
+            </div>
+          </div>
+
           <div className="form-group">
             <label htmlFor="name">Full Name</label>
             <input
@@ -105,7 +132,7 @@ const Register = () => {
           </div>
 
           <button type="submit" className="btn btn-primary btn-block" disabled={loading}>
-            {loading ? 'Creating Account...' : 'Register'}
+            {loading ? 'Creating Account...' : `Register as ${formData.role === 'recruiter' ? 'Recruiter' : 'Applicant'}`}
           </button>
         </form>
 

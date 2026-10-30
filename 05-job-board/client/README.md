@@ -1,30 +1,29 @@
-# React + Vite Frontend
+# Job Board Frontend (React + Vite)
 
-A React frontend for the Item Management application built with Vite, React Router v7, and Axios.
+A modern React frontend for the Job Board application built with Vite, React Router v7, and Axios.
 
 ## Features
 
-- **AuthContext**: Persists user data and JWT token to `localStorage`, providing `login`, `register`, and `logout` actions.
-- **Protected Routes**: Redirects unauthenticated users to `/login`.
-- **Pages**:
-  - `Login`: User authentication with validation and error alerts.
-  - `Register`: New user sign-up with password verification and error alerts.
-  - `Dashboard`: Full CRUD interface for items (title, description, status) scoped to the logged-in user.
-- **Navbar**: Displays the logged-in user's name and provides a quick logout button.
-- **Single Stylesheet (`App.css`)**: Responsive layout with modern CSS Grid card design and status badges (`pending`, `in-progress`, `done`).
+- **Role-Aware AuthContext**: Persists user credentials, role (`recruiter` or `applicant`), and JWT token in `localStorage`.
+- **Protected Routes**: Restricts authenticated pages and automatically redirects unauthenticated sessions to `/login`.
+- **Role-Based UI**:
+  - **Recruiter View**: Post open positions (title, company, location, salary, description), edit/delete postings, and inspect candidate applicant lists (name, email, timestamp).
+  - **Applicant View**: Search and browse listings, view key details, and apply once per job with instant visual status (`✓ Applied`).
+- **Registration with Role Selection**: Allows users to choose between Applicant and Recruiter profiles at sign-up.
+- **Navbar**: Displays brand title "Job Board", logged-in candidate/recruiter greeting, role badge, and logout.
+- **Responsive Styling (`App.css`)**: Clean, minimalist layout for desktop, tablet, and mobile screens.
 
 ---
 
 ## Getting Started
 
-1. **Start the Express backend** (in `server/` folder):
+1. **Start the Express backend** (in `server/`):
    ```bash
    cd server
    npm run dev
    ```
-   Backend runs at `http://localhost:5000`.
 
-2. **Start the React frontend** (in `client/` folder):
+2. **Start the React frontend** (in `client/`):
    ```bash
    cd client
    npm run dev
