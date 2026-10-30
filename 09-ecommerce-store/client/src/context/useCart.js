@@ -1,0 +1,16 @@
+// client/src/context/useCart.js
+// Custom hook to consume the Cart context
+
+import { useContext } from 'react';
+import { CartContext } from './cartContextInstance';
+
+export const useCart = () => {
+  const context = useContext(CartContext);
+  if (!context) {
+    throw new Error('useCart must be used within a CartProvider');
+  }
+  return context;
+};
+
+export default useCart;
+

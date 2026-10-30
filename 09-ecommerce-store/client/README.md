@@ -1,17 +1,16 @@
-# React + Vite Frontend
+# React + Vite Frontend - E-Commerce Store (ShopSphere)
 
-A React frontend for the Item Management application built with Vite, React Router v7, and Axios.
+A modern React frontend for the E-Commerce Store application built with Vite, React Router v7, and Axios.
 
 ## Features
 
 - **AuthContext**: Persists user data and JWT token to `localStorage`, providing `login`, `register`, and `logout` actions.
-- **Protected Routes**: Redirects unauthenticated users to `/login`.
-- **Pages**:
-  - `Login`: User authentication with validation and error alerts.
-  - `Register`: New user sign-up with password verification and error alerts.
-  - `Dashboard`: Full CRUD interface for items (title, description, status) scoped to the logged-in user.
-- **Navbar**: Displays the logged-in user's name and provides a quick logout button.
-- **Single Stylesheet (`App.css`)**: Responsive layout with modern CSS Grid card design and status badges (`pending`, `in-progress`, `done`).
+- **CartContext**: Persistent shopping cart with actions for `addToCart`, `removeFromCart`, `updateQuantity`, and `clearCart`, plus live cart count badge.
+- **Product Catalog (`Dashboard.jsx`)**: Responsive card grid with product images, pricing, stock indicators, real-time search filtering, and an expandable "Add Product" form.
+- **Shopping Cart (`Cart.jsx`)**: Review cart items, modify quantities, remove items, view order totals, and checkout with dummy "Pay Now".
+- **My Orders (`Orders.jsx`)**: Review past orders, view items ordered, and click "Pay Now" on pending orders to mark them as paid.
+- **Navbar**: Displays brand logo, active links to Products, Cart (with badge), My Orders, user greeting, and logout button.
+- **Single Stylesheet (`App.css`)**: Modern, responsive styling with clean UI components.
 
 ---
 
@@ -22,11 +21,11 @@ A React frontend for the Item Management application built with Vite, React Rout
    cd server
    npm run dev
    ```
-   Backend runs at `http://localhost:5000`.
 
 2. **Start the React frontend** (in `client/` folder):
    ```bash
    cd client
+   npm install
    npm run dev
    ```
    Open the browser URL shown by Vite (typically `http://localhost:5173`).

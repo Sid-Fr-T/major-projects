@@ -1,14 +1,14 @@
-# Express & MongoDB Backend
+# Express & MongoDB Backend - E-Commerce Store
 
-A clean, modular Express backend with ES modules, Mongoose, JWT authentication, and user-scoped CRUD operations.
+Express backend with ES modules, MongoDB / Mongoose, JWT authentication, Product Catalog, and Orders with dummy payment processing.
 
 ## Features
 
-- **ES Modules (`import`/`export`)**: Modern JavaScript syntax.
-- **Authentication**: JWT-based stateless authentication with password hashing via `bcryptjs`.
-- **User Scoping**: Items are tied to the authenticated user; users can only view, update, and delete their own items.
-- **MongoDB & Mongoose**: Schemas with validation, defaults, and timestamps.
-- **CORS & Environment Variables**: Configured via `cors` and `dotenv`.
+- **JWT Authentication**: Secure stateless authentication using bcryptjs and jsonwebtoken.
+- **Product Model & Seed**: Schema with `name`, `price`, `imageUrl`, `description`, and `stock`. Seeded with 8 products.
+- **Order Model & Processing**: Schema with `user`, `items` (product, name, price, quantity, imageUrl), `total`, and `status` (`pending`, `paid`, `cancelled`).
+- **Dummy Pay Now**: Endpoint `PUT /api/orders/:id/pay` simulating payment and marking the order as `paid`.
+- **User-Scoped Orders**: Customers can only view and manage their own orders.
 
 ---
 
@@ -18,23 +18,28 @@ A clean, modular Express backend with ES modules, Mongoose, JWT authentication, 
 server/
 ├── .env                  # Environment variables (PORT, MONGO_URI, JWT_SECRET)
 ├── .env.example          # Example environment variable template
-├── .gitignore            # Git ignore rule for node_modules and .env
 ├── package.json          # Node dependencies and scripts
 ├── README.md             # Backend documentation
 └── src/
     ├── config/
     │   └── db.js         # MongoDB connection setup
     ├── controllers/
-    │   ├── authController.js  # Registration and login logic
-    │   └── itemController.js  # User-scoped Item CRUD logic
+    │   ├── authController.js     # User registration and login
+    │   ├── productController.js  # Product catalog and auto-seeding
+    │   └── orderController.js    # Order checkout, history, and dummy pay
+    ├── data/
+    │   └── seedProducts.js       # 8 initial e-commerce products
     ├── middleware/
     │   └── auth.js       # JWT verification middleware
     ├── models/
-    │   ├── Item.js       # Generic Item schema & model
+    │   ├── Order.js      # Order schema & model
+    │   ├── Product.js    # Product schema & model
     │   └── User.js       # User schema & model
     ├── routes/
     │   ├── authRoutes.js # Routes for /api/auth
-    │   └── itemRoutes.js # Protected routes for /api/items
+    │   ├── productRoutes.js # Routes for /api/products
+    │   └── orderRoutes.js   # Routes for /api/orders
+    ├── seed.js           # Database seeder script
     └── server.js         # Express app initialization and server entry point
 ```
 
@@ -44,121 +49,42 @@ server/
 
 1. **Install dependencies**:
    ```bash
-   cd server
    npm install
    ```
 
 2. **Configure `.env`**:
-   Ensure `server/.env` is configured (or copy from `.env.example`):
    ```env
    PORT=5000
-   MONGO_URI=mongodb://localhost:27017/webdev_db
-   JWT_SECRET=your_jwt_secret_key_change_in_production
+   MONGO_URI=mongodb+srv://...
+   JWT_SECRET=your_jwt_secret_key
    ```
 
-3. **Run the server**:
-   - Development mode (with auto-reload):
-     ```bash
-     npm run dev
-     ```
-   - Production mode:
-     ```bash
-     npm start
-     ```
+3. **Seed database with 8 products**:
+   ```bash
+   npm run seed
+   ```
+
+4. **Run server**:
+   - Dev mode: `npm run dev`
+   - Start: `npm start`
 
 ---
 
 ## API Endpoints
 
-### 1. Authentication Routes (`/api/auth`)
+### 1. Authentication (`/api/auth`)
+- `POST /api/auth/register` - Register a new user
+- `POST /api/auth/login` - Authenticate user & get JWT
 
-| Method | Endpoint | Description | Auth Required |
-| :--- | :--- | :--- | :--- |
-| `POST` | `/api/auth/register` | Register a new user | No |
-| `POST` | `/api/auth/login` | Log in and receive JWT | No |
+### 2. Products (`/api/products`)
+- `GET /api/products` - List all products (with optional `?search=`)
+- `GET /api/products/:id` - Get product by ID
+- `POST /api/products` - Create new product (Protected)
+- `PUT /api/products/:id` - Update product (Protected)
+- `DELETE /api/products/:id` - Delete product (Protected)
 
-#### Example: Register User (`POST /api/auth/register`)
-Request Body:
-```json
-{
-  "name": "Jane Doe",
-  "email": "jane@example.com",
-  "password": "password123"
-}
-```
-Response (`201 Created`):
-```json
-{
-  "message": "User registered successfully",
-  "token": "eyJhbGciOiJIUzI1NiIsIn...",
-  "user": {
-    "_id": "671df...",
-    "name": "Jane Doe",
-    "email": "jane@example.com",
-    "role": "user",
-    "createdAt": "2026-10-26T12:00:00.000Z"
-  }
-}
-```
-
-#### Example: Login (`POST /api/auth/login`)
-Request Body:
-```json
-{
-  "email": "jane@example.com",
-  "password": "password123"
-}
-```
-Response (`200 OK`):
-```json
-{
-  "message": "Login successful",
-  "token": "eyJhbGciOiJIUzI1NiIsIn...",
-  "user": {
-    "_id": "671df...",
-    "name": "Jane Doe",
-    "email": "jane@example.com",
-    "role": "user",
-    "createdAt": "2026-10-26T12:00:00.000Z"
-  }
-}
-```
-
----
-
-### 2. Item Routes (`/api/items`)
-> All item routes require the `Authorization` header: `Bearer <token>`
-
-| Method | Endpoint | Description | Auth Required |
-| :--- | :--- | :--- | :--- |
-| `GET` | `/api/items` | Get all items for logged-in user | Yes |
-| `POST` | `/api/items` | Create a new item | Yes |
-| `GET` | `/api/items/:id` | Get single item by ID | Yes |
-| `PUT` | `/api/items/:id` | Update item by ID | Yes |
-| `DELETE` | `/api/items/:id` | Delete item by ID | Yes |
-
-#### Example: Create Item (`POST /api/items`)
-Headers:
-`Authorization: Bearer <token>`
-
-Request Body:
-```json
-{
-  "title": "Build portfolio project",
-  "description": "Create full stack MERN app",
-  "status": "pending"
-}
-```
-Response (`201 Created`):
-```json
-{
-  "_id": "671e0...",
-  "title": "Build portfolio project",
-  "description": "Create full stack MERN app",
-  "status": "pending",
-  "user": "671df...",
-  "createdAt": "2026-10-26T12:05:00.000Z",
-  "updatedAt": "2026-10-26T12:05:00.000Z"
-}
-```
-
+### 3. Orders (`/api/orders`)
+- `GET /api/orders` - Get current user's orders (Protected)
+- `GET /api/orders/:id` - Get specific order by ID (Protected)
+- `POST /api/orders` - Checkout / create new order (Protected)
+- `PUT /api/orders/:id/pay` - Dummy Pay Now: marks order as paid (Protected)

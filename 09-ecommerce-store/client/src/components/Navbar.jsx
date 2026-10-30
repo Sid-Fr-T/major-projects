@@ -1,33 +1,57 @@
 // client/src/components/Navbar.jsx
-// Navigation bar displaying application title, user greeting, and logout button
+// Navigation bar with branding, store navigation, cart badge, and user authentication
 
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/useAuth';
+import { useCart } from '../context/useCart';
 
 const Navbar = () => {
   const { user, logout } = useAuth();
+  const { totalCount } = useCart();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
 
+  const isActive = (path) => (location.pathname === path ? 'active' : '');
+
   return (
     <nav className="navbar">
       <div className="nav-container">
+        {/* Brand Logo */}
         <Link to="/" className="nav-brand">
-          TaskApp
+          <span className="brand-icon">🛒</span>
+          <span>ShopSphere</span>
         </Link>
+
+        {/* Navigation & Actions */}
         <div className="nav-actions">
           {user ? (
             <>
-              <span className="nav-user">
-                Hello, <strong>{user.name}</strong>
-              </span>
-              <button onClick={handleLogout} className="btn btn-secondary">
-                Logout
-              </button>
+              <div className="nav-links">
+                <Link to="/" className={`nav-link ${isActive('/')}`}>
+                  Products
+                </Link>
+                <Link to="/cart" className={`nav-link cart-link ${isActive('/cart')}`}>
+                  Cart
+                  {totalCount > 0 && <span className="cart-badge">{totalCount}</span>}
+                </Link>
+                <Link to="/orders" className={`nav-link ${isActive('/orders')}`}>
+                  My Orders
+                </Link>
+              </div>
+
+              <div className="user-section">
+                <span className="nav-user">
+                  Hello, <strong>{user.name}</strong>
+                </span>
+                <button onClick={handleLogout} className="btn btn-secondary-sm">
+                  Logout
+                </button>
+              </div>
             </>
           ) : (
             <div className="nav-links">
