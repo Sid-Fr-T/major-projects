@@ -1,13 +1,15 @@
-# Express & MongoDB Backend
+# Express, Socket.IO & MongoDB Backend
 
-A clean, modular Express backend with ES modules, Mongoose, JWT authentication, and user-scoped CRUD operations.
+A real-time chat backend built with Express, Socket.IO, MongoDB, Mongoose, and JWT authentication.
 
 ## Features
 
 - **ES Modules (`import`/`export`)**: Modern JavaScript syntax.
 - **Authentication**: JWT-based stateless authentication with password hashing via `bcryptjs`.
-- **User Scoping**: Items are tied to the authenticated user; users can only view, update, and delete their own items.
-- **MongoDB & Mongoose**: Schemas with validation, defaults, and timestamps.
+- **Real-Time Communication**: Socket.IO integration for instant bidirectional messaging and live connection tracking.
+- **Global Chat Room**: Live broadcast of chat messages to all connected clients.
+- **Message Persistence**: All chat messages stored in MongoDB with sender information and timestamps.
+- **Live Online Users Count**: Real-time tracking and broadcasting of active online users.
 - **CORS & Environment Variables**: Configured via `cors` and `dotenv`.
 
 ---
@@ -25,17 +27,17 @@ server/
     ├── config/
     │   └── db.js         # MongoDB connection setup
     ├── controllers/
-    │   ├── authController.js  # Registration and login logic
-    │   └── itemController.js  # User-scoped Item CRUD logic
+    │   ├── authController.js     # Registration and login logic
+    │   └── messageController.js  # Chat message history and REST creation
     ├── middleware/
     │   └── auth.js       # JWT verification middleware
     ├── models/
-    │   ├── Item.js       # Generic Item schema & model
+    │   ├── Message.js    # Message schema & model (sender, text, timestamps)
     │   └── User.js       # User schema & model
     ├── routes/
-    │   ├── authRoutes.js # Routes for /api/auth
-    │   └── itemRoutes.js # Protected routes for /api/items
-    └── server.js         # Express app initialization and server entry point
+    │   ├── authRoutes.js    # Routes for /api/auth
+    │   └── messageRoutes.js # Protected routes for /api/messages
+    └── server.js         # HTTP + Socket.IO server initialization
 ```
 
 ---
@@ -77,88 +79,22 @@ server/
 | `POST` | `/api/auth/register` | Register a new user | No |
 | `POST` | `/api/auth/login` | Log in and receive JWT | No |
 
-#### Example: Register User (`POST /api/auth/register`)
-Request Body:
-```json
-{
-  "name": "Jane Doe",
-  "email": "jane@example.com",
-  "password": "password123"
-}
-```
-Response (`201 Created`):
-```json
-{
-  "message": "User registered successfully",
-  "token": "eyJhbGciOiJIUzI1NiIsIn...",
-  "user": {
-    "_id": "671df...",
-    "name": "Jane Doe",
-    "email": "jane@example.com",
-    "role": "user",
-    "createdAt": "2026-10-26T12:00:00.000Z"
-  }
-}
-```
-
-#### Example: Login (`POST /api/auth/login`)
-Request Body:
-```json
-{
-  "email": "jane@example.com",
-  "password": "password123"
-}
-```
-Response (`200 OK`):
-```json
-{
-  "message": "Login successful",
-  "token": "eyJhbGciOiJIUzI1NiIsIn...",
-  "user": {
-    "_id": "671df...",
-    "name": "Jane Doe",
-    "email": "jane@example.com",
-    "role": "user",
-    "createdAt": "2026-10-26T12:00:00.000Z"
-  }
-}
-```
-
----
-
-### 2. Item Routes (`/api/items`)
-> All item routes require the `Authorization` header: `Bearer <token>`
+### 2. Message Routes (`/api/messages`)
+> Protected routes require the `Authorization` header: `Bearer <token>`
 
 | Method | Endpoint | Description | Auth Required |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/api/items` | Get all items for logged-in user | Yes |
-| `POST` | `/api/items` | Create a new item | Yes |
-| `GET` | `/api/items/:id` | Get single item by ID | Yes |
-| `PUT` | `/api/items/:id` | Update item by ID | Yes |
-| `DELETE` | `/api/items/:id` | Delete item by ID | Yes |
+| `GET` | `/api/messages` | Retrieve global message history | Yes |
+| `POST` | `/api/messages` | Create a new message & broadcast | Yes |
 
-#### Example: Create Item (`POST /api/items`)
-Headers:
-`Authorization: Bearer <token>`
+---
 
-Request Body:
-```json
-{
-  "title": "Build portfolio project",
-  "description": "Create full stack MERN app",
-  "status": "pending"
-}
-```
-Response (`201 Created`):
-```json
-{
-  "_id": "671e0...",
-  "title": "Build portfolio project",
-  "description": "Create full stack MERN app",
-  "status": "pending",
-  "user": "671df...",
-  "createdAt": "2026-10-26T12:05:00.000Z",
-  "updatedAt": "2026-10-26T12:05:00.000Z"
-}
-```
+## Socket.IO Events
 
+| Event | Direction | Payload | Description |
+| :--- | :--- | :--- | :--- |
+| `connect` | Client → Server | `{ auth: { token } }` | Authenticates socket connection |
+| `authenticate` | Client → Server | `token` string | Late-authentication for socket |
+| `sendMessage` | Client → Server | `{ text, token }` | Send a new message to global chat |
+| `receiveMessage` | Server → Client | Populated message object | Broadcasts message to all clients |
+| `onlineCount` | Server → Client | Number | Emits current count of online users |

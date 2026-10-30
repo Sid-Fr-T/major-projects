@@ -1,14 +1,14 @@
 {
   "name": "server",
   "version": "1.0.0",
-  "description": "Express backend with MongoDB, JWT authentication, and Item CRUD",
+  "description": "Express backend with MongoDB, JWT authentication, and real-time Socket.IO chat",
   "type": "module",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js"
   },
-  "keywords": ["express", "mongodb", "jwt", "auth"],
+  "keywords": ["express", "mongodb", "jwt", "auth", "socket.io", "chat"],
   "author": "",
   "license": "ISC",
   "dependencies": {
@@ -17,7 +17,8 @@
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.9.5"
+    "mongoose": "^8.9.5",
+    "socket.io": "^4.8.1"
   }
 }
 

@@ -1,44 +1,49 @@
 // client/src/pages/Dashboard.jsx
-// Dashboard for viewing, creating, updating, and deleting items scoped to the user
+// Global real-time chat room displaying message history, live messages, and online user count
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { io } from 'socket.io-client';
 import API from '../api/axios';
+import { useAuth } from '../context/useAuth';
+
+const SOCKET_URL = 'http://localhost:5000';
 
 const Dashboard = () => {
-  const [items, setItems] = useState([]);
+  const { user } = useAuth();
+  const [messages, setMessages] = useState([]);
+  const [inputText, setInputText] = useState('');
+  const [onlineCount, setOnlineCount] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [socketConnected, setSocketConnected] = useState(false);
 
-  // State for creating a new item
-  const [newItem, setNewItem] = useState({
-    title: '',
-    description: '',
-    status: 'pending',
-  });
-  const [createLoading, setCreateLoading] = useState(false);
+  const socketRef = useRef(null);
+  const messagesEndRef = useRef(null);
 
-  // State for tracking which item is currently being edited
-  const [editingId, setEditingId] = useState(null);
-  const [editFormData, setEditFormData] = useState({
-    title: '',
-    description: '',
-    status: 'pending',
-  });
+  // Auto-scroll to latest message
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
 
-  // Fetch all items belonging to the authenticated user on mount
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  // Load message history via REST API
   useEffect(() => {
     let ignore = false;
 
-    API.get('/items')
+    API.get('/messages')
       .then((res) => {
         if (!ignore) {
-          setItems(res.data);
+          setMessages(res.data);
           setError('');
         }
       })
       .catch((err) => {
         if (!ignore) {
-          setError(err.response?.data?.message || 'Failed to load items.');
+          console.error('Failed to load message history:', err);
+          setError(err.response?.data?.message || 'Failed to load message history.');
         }
       })
       .finally(() => {
@@ -52,238 +57,171 @@ const Dashboard = () => {
     };
   }, []);
 
-  // Handle new item form input changes
-  const handleNewChange = (e) => {
-    setNewItem((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-  };
+  // Initialize Socket.IO connection
+  useEffect(() => {
+    const token = localStorage.getItem('token');
 
-  // Submit new item
-  const handleCreateSubmit = async (e) => {
-    e.preventDefault();
-    if (!newItem.title.trim()) return;
-
-    setCreateLoading(true);
-    try {
-      const res = await API.post('/items', newItem);
-      setItems((prev) => [res.data, ...prev]);
-      setNewItem({ title: '', description: '', status: 'pending' });
-    } catch (err) {
-      alert(err.response?.data?.message || 'Failed to create item.');
-    } finally {
-      setCreateLoading(false);
-    }
-  };
-
-  // Enable edit mode for a specific card
-  const startEdit = (item) => {
-    setEditingId(item._id);
-    setEditFormData({
-      title: item.title,
-      description: item.description || '',
-      status: item.status || 'pending',
+    const socket = io(SOCKET_URL, {
+      auth: {
+        token,
+      },
+      transports: ['websocket', 'polling'],
     });
-  };
 
-  // Cancel edit mode
-  const cancelEdit = () => {
-    setEditingId(null);
-    setEditFormData({ title: '', description: '', status: 'pending' });
-  };
+    socketRef.current = socket;
 
-  // Save updated item
-  const handleUpdateSubmit = async (id) => {
-    if (!editFormData.title.trim()) return;
+    socket.on('connect', () => {
+      setSocketConnected(true);
+      if (token) {
+        socket.emit('authenticate', token);
+      }
+    });
 
-    try {
-      const res = await API.put(`/items/${id}`, editFormData);
-      setItems((prev) =>
-        prev.map((item) => (item._id === id ? res.data : item))
-      );
-      setEditingId(null);
-    } catch (err) {
-      alert(err.response?.data?.message || 'Failed to update item.');
+    socket.on('disconnect', () => {
+      setSocketConnected(false);
+    });
+
+    // Receive updated online user count
+    socket.on('onlineCount', (count) => {
+      setOnlineCount(count);
+    });
+
+    // Receive real-time message
+    socket.on('receiveMessage', (newMsg) => {
+      setMessages((prev) => {
+        if (prev.some((m) => m._id === newMsg._id)) {
+          return prev;
+        }
+        return [...prev, newMsg];
+      });
+    });
+
+    socket.on('chatError', (err) => {
+      console.error('Chat error:', err);
+      alert(err.message || 'Error sending message');
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, []);
+
+  // Send message handler
+  const handleSendMessage = (e) => {
+    e.preventDefault();
+    const trimmed = inputText.trim();
+    if (!trimmed) return;
+
+    const token = localStorage.getItem('token');
+
+    if (socketRef.current && socketRef.current.connected) {
+      socketRef.current.emit('sendMessage', {
+        text: trimmed,
+        token,
+      });
+      setInputText('');
+    } else {
+      // Fallback to HTTP POST if socket is temporarily disconnected
+      API.post('/messages', { text: trimmed })
+        .then((res) => {
+          setMessages((prev) => {
+            if (prev.some((m) => m._id === res.data._id)) return prev;
+            return [...prev, res.data];
+          });
+          setInputText('');
+        })
+        .catch((err) => {
+          alert(err.response?.data?.message || 'Failed to send message.');
+        });
     }
   };
 
-  // Delete an item
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this item?')) return;
-
-    try {
-      await API.delete(`/items/${id}`);
-      setItems((prev) => prev.filter((item) => item._id !== id));
-    } catch (err) {
-      alert(err.response?.data?.message || 'Failed to delete item.');
-    }
+  // Helper to format timestamps
+  const formatTime = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   return (
-    <div className="dashboard-container">
-      {/* Top Creation Card */}
-      <section className="create-section">
-        <h2>Add New Item</h2>
-        <form onSubmit={handleCreateSubmit} className="create-form">
-          <div className="form-row">
-            <input
-              type="text"
-              name="title"
-              value={newItem.title}
-              onChange={handleNewChange}
-              placeholder="Item title *"
-              required
-              className="input-title"
-            />
-            <select
-              name="status"
-              value={newItem.status}
-              onChange={handleNewChange}
-              className="select-status"
-            >
-              <option value="pending">Pending</option>
-              <option value="in-progress">In Progress</option>
-              <option value="done">Done</option>
-            </select>
-          </div>
-          <textarea
-            name="description"
-            value={newItem.description}
-            onChange={handleNewChange}
-            placeholder="Item description (optional)"
-            rows="2"
-            className="input-desc"
-          ></textarea>
-          <button
-            type="submit"
-            className="btn btn-primary"
-            disabled={createLoading}
-          >
-            {createLoading ? 'Adding...' : 'Add Item'}
-          </button>
-        </form>
-      </section>
-
-      {/* Items Section */}
-      <section className="items-section">
-        <div className="items-header">
-          <h2>Your Items</h2>
-          <span className="items-count">({items.length})</span>
+    <div className="chat-dashboard">
+      {/* Chat Room Header */}
+      <div className="chat-header">
+        <div className="chat-header-info">
+          <h2>Global Chat Room</h2>
+          <p className="chat-subtitle">Real-time chat with everyone online</p>
         </div>
+        <div className="online-indicator">
+          <span className={`status-dot ${socketConnected ? 'connected' : 'disconnected'}`}></span>
+          <span className="online-text">
+            <strong>{onlineCount}</strong> {onlineCount === 1 ? 'user' : 'users'} online
+          </span>
+        </div>
+      </div>
 
-        {error && <div className="alert alert-error">{error}</div>}
+      {error && <div className="alert alert-error">{error}</div>}
 
+      {/* Chat Messages Container */}
+      <div className="chat-messages-container">
         {loading ? (
-          <div className="loading-state">Loading items...</div>
-        ) : items.length === 0 ? (
-          <div className="empty-state">
-            <p>No items yet. Create your first item above!</p>
+          <div className="chat-state-message">Loading message history...</div>
+        ) : messages.length === 0 ? (
+          <div className="chat-state-message">
+            No messages yet. Send the first message to start chatting!
           </div>
         ) : (
-          <div className="card-grid">
-            {items.map((item) => {
-              const isEditing = editingId === item._id;
+          <div className="messages-list">
+            {messages.map((msg) => {
+              const senderId =
+                typeof msg.sender === 'object' && msg.sender !== null
+                  ? msg.sender._id
+                  : msg.sender;
+              const isMe = user && senderId && user._id === senderId;
+              const senderName =
+                typeof msg.sender === 'object' && msg.sender !== null
+                  ? msg.sender.name
+                  : 'Unknown';
 
               return (
-                <div key={item._id} className="item-card">
-                  {isEditing ? (
-                    // Card in Edit Mode
-                    <div className="card-edit-mode">
-                      <input
-                        type="text"
-                        value={editFormData.title}
-                        onChange={(e) =>
-                          setEditFormData((prev) => ({
-                            ...prev,
-                            title: e.target.value,
-                          }))
-                        }
-                        className="edit-input"
-                        placeholder="Title"
-                      />
-                      <textarea
-                        value={editFormData.description}
-                        onChange={(e) =>
-                          setEditFormData((prev) => ({
-                            ...prev,
-                            description: e.target.value,
-                          }))
-                        }
-                        className="edit-textarea"
-                        rows="3"
-                        placeholder="Description"
-                      />
-                      <select
-                        value={editFormData.status}
-                        onChange={(e) =>
-                          setEditFormData((prev) => ({
-                            ...prev,
-                            status: e.target.value,
-                          }))
-                        }
-                        className="edit-select"
-                      >
-                        <option value="pending">Pending</option>
-                        <option value="in-progress">In Progress</option>
-                        <option value="done">Done</option>
-                      </select>
-                      <div className="card-actions">
-                        <button
-                          onClick={() => handleUpdateSubmit(item._id)}
-                          className="btn btn-success-sm"
-                        >
-                          Save
-                        </button>
-                        <button
-                          onClick={cancelEdit}
-                          className="btn btn-secondary-sm"
-                        >
-                          Cancel
-                        </button>
-                      </div>
+                <div
+                  key={msg._id || `${msg.createdAt}-${Math.random()}`}
+                  className={`message-row ${isMe ? 'my-row' : 'other-row'}`}
+                >
+                  <div className={`message-bubble ${isMe ? 'my-bubble' : 'other-bubble'}`}>
+                    <div className="message-meta">
+                      <span className="sender-name">{isMe ? 'You' : senderName}</span>
+                      <span className="message-time">{formatTime(msg.createdAt)}</span>
                     </div>
-                  ) : (
-                    // Card in View Mode
-                    <>
-                      <div className="card-header">
-                        <h3 className="card-title">{item.title}</h3>
-                        <span
-                          className={`status-badge status-${item.status || 'pending'}`}
-                        >
-                          {item.status || 'pending'}
-                        </span>
-                      </div>
-                      <p className="card-description">
-                        {item.description || 'No description provided.'}
-                      </p>
-                      <div className="card-footer">
-                        <span className="card-date">
-                          {new Date(item.createdAt).toLocaleDateString()}
-                        </span>
-                        <div className="card-actions">
-                          <button
-                            onClick={() => startEdit(item)}
-                            className="btn btn-secondary-sm"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDelete(item._id)}
-                            className="btn btn-danger-sm"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </div>
-                    </>
-                  )}
+                    <div className="message-text">{msg.text}</div>
+                  </div>
                 </div>
               );
             })}
+            <div ref={messagesEndRef} />
           </div>
         )}
-      </section>
+      </div>
+
+      {/* Message Input Form */}
+      <form onSubmit={handleSendMessage} className="chat-input-form">
+        <input
+          type="text"
+          className="chat-input"
+          placeholder="Type your message here..."
+          value={inputText}
+          onChange={(e) => setInputText(e.target.value)}
+          autoFocus
+        />
+        <button
+          type="submit"
+          className="btn btn-primary chat-send-btn"
+          disabled={!inputText.trim()}
+        >
+          Send
+        </button>
+      </form>
     </div>
   );
 };
 
 export default Dashboard;
-
